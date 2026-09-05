@@ -1,18 +1,11 @@
 {
-  "name": "wacrm",
-  "version": "0.8.0",
+  "name": "automa-crm",
+  "version": "1.0.0",
   "private": true,
-  "description": "Self-hostable CRM template for WhatsApp built on Next.js and Supabase — shared inbox, contacts, sales pipelines, broadcasts, and no-code automations.",
+  "description": "Automa CRM — WhatsApp CRM for real estate builders by Automa Studio",
   "license": "MIT",
-  "author": "Arnas Donauskas",
-  "homepage": "https://github.com/ArnasDon/wacrm",
-  "repository": {
-    "type": "git",
-    "url": "git+https://github.com/ArnasDon/wacrm.git"
-  },
-  "bugs": {
-    "url": "https://github.com/ArnasDon/wacrm/issues"
-  },
+  "author": "Automa Studio <inquiry@automastudio.in>",
+  "homepage": "https://automastudio.in",
   "keywords": [
     "crm",
     "whatsapp",
@@ -22,6 +15,7 @@
     "automation",
     "broadcast",
     "self-hosted",
+    "real-estate",
     "template"
   ],
   "engines": {
@@ -35,9 +29,7 @@
     "lint": "eslint",
     "typecheck": "tsc --noEmit",
     "format": "prettier --write .",
-    "format:check": "prettier --check .",
-    "test": "vitest run",
-    "test:watch": "vitest"
+    "format:check": "prettier --check ."
   },
   "dependencies": {
     "@base-ui/react": "^1.6.0",
@@ -73,8 +65,7 @@
     "prettier": "^3.9.6",
     "prettier-plugin-tailwindcss": "^0.8.1",
     "tailwindcss": "^4",
-    "typescript": "^6",
-    "vitest": "^4.1.10"
+    "typescript": "^6"
   },
   "overrides": {
     "postcss": "^8.5.10",
