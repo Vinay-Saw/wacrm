@@ -27,15 +27,41 @@ export async function POST(request: Request) {
     }
 
     const provider = body.provider as AiProvider
-    if (provider !== 'openai' && provider !== 'anthropic') {
+    if (provider !== 'openai' && provider !== 'anthropic' && provider !== 'custom') {
       return NextResponse.json(
-        { error: 'provider must be "openai" or "anthropic"' },
+        { error: 'provider must be "openai", "anthropic", or "custom"' },
         { status: 400 },
       )
     }
     const model = typeof body.model === 'string' ? body.model.trim() : ''
     if (!model) {
       return NextResponse.json({ error: 'model is required' }, { status: 400 })
+    }
+
+    let endpoint: string | null = null
+    if (provider === 'custom') {
+      const rawEndpoint = typeof body.endpoint === 'string' ? body.endpoint.trim() : ''
+      if (!rawEndpoint) {
+        return NextResponse.json(
+          { error: 'endpoint URL is required for custom AI provider' },
+          { status: 400 },
+        )
+      }
+      try {
+        const parsed = new URL(rawEndpoint)
+        if (parsed.protocol !== 'http:' && parsed.protocol !== 'https:') {
+          return NextResponse.json(
+            { error: 'endpoint URL must start with http:// or https://' },
+            { status: 400 },
+          )
+        }
+        endpoint = rawEndpoint
+      } catch {
+        return NextResponse.json(
+          { error: 'Invalid endpoint URL' },
+          { status: 400 },
+        )
+      }
     }
 
     const rawKey = typeof body.api_key === 'string' ? body.api_key.trim() : ''
@@ -67,6 +93,7 @@ export async function POST(request: Request) {
         provider,
         model,
         apiKey: apiKeyPlain,
+        endpoint,
         systemPrompt: null,
         isActive: true,
         autoReplyEnabled: false,

@@ -6,7 +6,7 @@
 // whether the account is on OpenAI or Anthropic.
 // ============================================================
 
-export type AiProvider = 'openai' | 'anthropic'
+export type AiProvider = 'openai' | 'anthropic' | 'custom'
 
 /**
  * Account AI setup, decrypted and ready to use. Produced by
@@ -17,6 +17,8 @@ export interface AiConfig {
   provider: AiProvider
   model: string
   apiKey: string
+  /** Custom endpoint URL when provider is 'custom' (e.g. OpenRouter or custom OpenAI-compatible endpoint). */
+  endpoint?: string | null
   systemPrompt: string | null
   isActive: boolean
   autoReplyEnabled: boolean

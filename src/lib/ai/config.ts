@@ -69,10 +69,22 @@ export async function loadAiConfig(
     }
   }
 
+  let provider: AiConfig['provider'] = row.provider
+  let model = row.model
+  let endpoint: string | null = null
+
+  if (row.model.startsWith('custom|')) {
+    const parts = row.model.split('|')
+    provider = 'custom'
+    endpoint = parts[1] || null
+    model = parts.slice(2).join('|') || 'openai/gpt-4o-mini'
+  }
+
   return {
-    provider: row.provider,
-    model: row.model,
+    provider,
+    model,
     apiKey: decrypt(row.api_key),
+    endpoint,
     systemPrompt: row.system_prompt,
     isActive: row.is_active,
     autoReplyEnabled: row.auto_reply_enabled,

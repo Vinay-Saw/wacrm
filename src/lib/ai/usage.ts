@@ -32,11 +32,12 @@ export async function logAiUsage(
 ): Promise<void> {
   if (!args.usage) return
   try {
+    const dbProvider = args.provider === 'custom' ? 'openai' : args.provider
     const { error } = await db.from('ai_usage_log').insert({
       account_id: args.accountId,
       conversation_id: args.conversationId,
       mode: args.mode,
-      provider: args.provider,
+      provider: dbProvider,
       model: args.model,
       prompt_tokens: args.usage.promptTokens,
       completion_tokens: args.usage.completionTokens,

@@ -19,21 +19,39 @@ interface OpenAiResponse {
   }
 }
 
+export interface OpenAiProviderArgs extends ProviderArgs {
+  endpoint?: string | null
+}
+
 /**
- * Call OpenAI's Chat Completions endpoint with the caller's own key.
- * Returns the raw assistant text + token usage (handoff parsing happens
- * in `generateReply`).
+ * Call OpenAI's Chat Completions endpoint (or custom OpenAI-compatible endpoint)
+ * with the caller's own key. Returns the raw assistant text + token usage
+ * (handoff parsing happens in `generateReply`).
  */
-export async function generateOpenAi(args: ProviderArgs): Promise<ProviderResult> {
-  const { apiKey, model, systemPrompt, messages, timeoutMs } = args
+export async function generateOpenAi(args: OpenAiProviderArgs): Promise<ProviderResult> {
+  const { apiKey, model, systemPrompt, messages, timeoutMs, endpoint } = args
+
+  let url = OPENAI_URL
+  if (endpoint && endpoint.trim()) {
+    const raw = endpoint.trim()
+    if (raw.endsWith('/chat/completions')) {
+      url = raw
+    } else {
+      url = `${raw.replace(/\/+$/, '')}/chat/completions`
+    }
+  }
+
+  const providerName = endpoint ? 'Custom AI endpoint' : 'OpenAI'
 
   let res: Response
   try {
-    res = await fetch(OPENAI_URL, {
+    res = await fetch(url, {
       method: 'POST',
       headers: {
         Authorization: `Bearer ${apiKey}`,
         'Content-Type': 'application/json',
+        'HTTP-Referer': 'https://automastudio.in',
+        'X-Title': 'Automa CRM',
       },
       body: JSON.stringify({
         model,
@@ -50,13 +68,13 @@ export async function generateOpenAi(args: ProviderArgs): Promise<ProviderResult
   }
 
   if (!res.ok) {
-    throw await providerHttpError('OpenAI', res)
+    throw await providerHttpError(providerName, res)
   }
 
   const data = (await res.json().catch(() => null)) as OpenAiResponse | null
   const text = data?.choices?.[0]?.message?.content
   if (!text || typeof text !== 'string' || !text.trim()) {
-    throw new AiError('OpenAI returned an empty response.', {
+    throw new AiError(`${providerName} returned an empty response.`, {
       code: 'empty_response',
     })
   }

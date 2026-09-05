@@ -38,6 +38,9 @@ export async function generateReply(args: GenerateArgs): Promise<GenerateResult>
     case 'openai':
       result = await generateOpenAi(providerArgs)
       break
+    case 'custom':
+      result = await generateOpenAi({ ...providerArgs, endpoint: config.endpoint })
+      break
     case 'anthropic':
       result = await generateAnthropic(providerArgs)
       break

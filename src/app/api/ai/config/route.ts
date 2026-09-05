@@ -47,11 +47,25 @@ export async function GET() {
     // The keys are selected only to derive the has_* flags; neither is
     // returned to the client.
     const { api_key, embeddings_api_key, ...safe } = data
+
+    let provider = safe.provider as AiProvider
+    let model = safe.model
+    let endpoint: string | null = null
+    if (safe.model && safe.model.startsWith('custom|')) {
+      const parts = safe.model.split('|')
+      provider = 'custom'
+      endpoint = parts[1] || null
+      model = parts.slice(2).join('|') || ''
+    }
+
     return NextResponse.json({
       configured: true,
       has_key: !!api_key,
       has_embeddings_key: !!embeddings_api_key,
       ...safe,
+      provider,
+      model,
+      endpoint,
     })
   } catch (err) {
     return toErrorResponse(err)
@@ -78,11 +92,28 @@ export async function POST(request: Request) {
     if (!body || typeof body !== 'object') return bad('Invalid request body')
 
     const provider = body.provider as AiProvider
-    if (provider !== 'openai' && provider !== 'anthropic') {
-      return bad('provider must be "openai" or "anthropic"')
+    if (provider !== 'openai' && provider !== 'anthropic' && provider !== 'custom') {
+      return bad('provider must be "openai", "anthropic", or "custom"')
     }
     const model = typeof body.model === 'string' ? body.model.trim() : ''
     if (!model) return bad('model is required')
+
+    let endpoint: string | null = null
+    if (provider === 'custom') {
+      const rawEndpoint = typeof body.endpoint === 'string' ? body.endpoint.trim() : ''
+      if (!rawEndpoint) {
+        return bad('endpoint URL is required for custom AI provider')
+      }
+      try {
+        const parsed = new URL(rawEndpoint)
+        if (parsed.protocol !== 'http:' && parsed.protocol !== 'https:') {
+          return bad('endpoint URL must start with http:// or https://')
+        }
+        endpoint = rawEndpoint
+      } catch {
+        return bad('Invalid endpoint URL')
+      }
+    }
 
     const systemPrompt =
       typeof body.system_prompt === 'string' && body.system_prompt.trim()
@@ -145,6 +176,16 @@ export async function POST(request: Request) {
       return bad('api_key is required')
     }
 
+    const storedEndpoint = existing?.model?.startsWith('custom|')
+      ? existing.model.split('|')[1]
+      : null
+    const storedModel = existing?.model?.startsWith('custom|')
+      ? existing.model.split('|').slice(2).join('|')
+      : existing?.model
+    const existingProvider = existing?.model?.startsWith('custom|')
+      ? 'custom'
+      : existing?.provider
+
     // Only spend a provider round-trip when the credentials that affect
     // reachability actually changed. A save that just flips a toggle or
     // edits the system prompt on an existing, already-validated config
@@ -152,8 +193,9 @@ export async function POST(request: Request) {
     const credentialsChanged =
       !existing ||
       rawKey !== '' ||
-      provider !== existing.provider ||
-      model !== existing.model
+      provider !== existingProvider ||
+      model !== storedModel ||
+      endpoint !== storedEndpoint
 
     if (credentialsChanged) {
       try {
@@ -161,6 +203,7 @@ export async function POST(request: Request) {
           provider,
           model,
           apiKey: apiKeyPlain,
+          endpoint,
           systemPrompt,
           isActive,
           autoReplyEnabled,
@@ -198,9 +241,12 @@ export async function POST(request: Request) {
     }
 
     const encryptedKey = rawKey ? encrypt(rawKey) : null
+    const dbProvider = provider === 'custom' ? 'openai' : provider
+    const dbModel = provider === 'custom' ? `custom|${endpoint}|${model}` : model
+
     const shared: Record<string, unknown> = {
-      provider,
-      model,
+      provider: dbProvider,
+      model: dbModel,
       system_prompt: systemPrompt,
       is_active: isActive,
       auto_reply_enabled: autoReplyEnabled,

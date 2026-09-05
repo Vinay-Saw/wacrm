@@ -2,7 +2,7 @@
 
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { toast } from 'sonner';
-import { Loader2, Sparkles, CheckCircle2, Trash2, Eye, EyeOff } from 'lucide-react';
+import { Loader2, Sparkles, CheckCircle2, Trash2, Eye, EyeOff, SlidersHorizontal } from 'lucide-react';
 import { useAuth } from '@/hooks/use-auth';
 import { canEditSettings } from '@/lib/auth/roles';
 import { Button } from '@/components/ui/button';
@@ -26,8 +26,9 @@ import {
 } from '@/components/ui/select';
 import { SettingsPanelHead } from './settings-panel-head';
 import { AiKnowledgeCard } from './ai-knowledge';
-import { AI_PROVIDER_DEFAULT_MODEL } from '@/lib/ai/defaults';
+import { AI_PROVIDER_DEFAULT_MODEL, AI_DEFAULT_CUSTOM_ENDPOINT } from '@/lib/ai/defaults';
 import type { AiProvider } from '@/lib/ai/types';
+import { CustomAiDialog } from './custom-ai-dialog';
 import type { AccountMember } from '@/types';
 import { fetchAccountMembers, memberLabel } from '@/lib/account/members';
 import { useTranslations } from 'next-intl';
@@ -41,11 +42,13 @@ const HANDOFF_QUEUE = '__queue__';
 const PROVIDER_LABEL: Record<AiProvider, string> = {
   openai: 'OpenAI',
   anthropic: 'Anthropic (Claude)',
+  custom: 'Custom (OpenRouter / Endpoint)',
 };
 
 const KEY_PLACEHOLDER: Record<AiProvider, string> = {
   openai: 'sk-...',
   anthropic: 'sk-ant-...',
+  custom: 'sk-or-... (API key for custom endpoint)',
 };
 
 export function AiConfig() {
@@ -61,6 +64,8 @@ export function AiConfig() {
   const [configured, setConfigured] = useState(false);
   const [provider, setProvider] = useState<AiProvider>('openai');
   const [model, setModel] = useState(AI_PROVIDER_DEFAULT_MODEL.openai);
+  const [customEndpoint, setCustomEndpoint] = useState(AI_DEFAULT_CUSTOM_ENDPOINT);
+  const [showCustomDialog, setShowCustomDialog] = useState(false);
   const [apiKey, setApiKey] = useState('');
   const [keyEdited, setKeyEdited] = useState(false);
   const [showKey, setShowKey] = useState(false);
@@ -95,6 +100,9 @@ export function AiConfig() {
         setConfigured(true);
         setProvider(data.provider);
         setModel(data.model);
+        if (data.endpoint) {
+          setCustomEndpoint(data.endpoint);
+        }
         setSystemPrompt(data.system_prompt ?? '');
         setIsActive(data.is_active);
         setAutoReplyEnabled(data.auto_reply_enabled);
@@ -128,11 +136,23 @@ export function AiConfig() {
   // typed a custom model.
   const handleProviderChange = (next: AiProvider) => {
     setProvider(next);
-    const isDefaultModel =
-      model === AI_PROVIDER_DEFAULT_MODEL.openai ||
-      model === AI_PROVIDER_DEFAULT_MODEL.anthropic ||
-      model.trim() === '';
-    if (isDefaultModel) setModel(AI_PROVIDER_DEFAULT_MODEL[next]);
+    if (next === 'custom') {
+      setShowCustomDialog(true);
+      if (
+        model === AI_PROVIDER_DEFAULT_MODEL.openai ||
+        model === AI_PROVIDER_DEFAULT_MODEL.anthropic ||
+        model.trim() === ''
+      ) {
+        setModel(AI_PROVIDER_DEFAULT_MODEL.custom);
+      }
+    } else {
+      const isDefaultModel =
+        model === AI_PROVIDER_DEFAULT_MODEL.openai ||
+        model === AI_PROVIDER_DEFAULT_MODEL.anthropic ||
+        model === AI_PROVIDER_DEFAULT_MODEL.custom ||
+        model.trim() === '';
+      if (isDefaultModel) setModel(AI_PROVIDER_DEFAULT_MODEL[next]);
+    }
   };
 
   const keyPayload = () => (keyEdited ? apiKey.trim() : undefined);
@@ -144,6 +164,7 @@ export function AiConfig() {
   const buildBody = () => ({
     provider,
     model: model.trim(),
+    endpoint: provider === 'custom' ? customEndpoint.trim() : undefined,
     api_key: keyPayload(),
     embeddings_api_key: embeddingsKeyPayload(),
     system_prompt: systemPrompt.trim() || null,
@@ -162,6 +183,7 @@ export function AiConfig() {
         body: JSON.stringify({
           provider,
           model: model.trim(),
+          endpoint: provider === 'custom' ? customEndpoint.trim() : undefined,
           api_key: keyPayload(),
         }),
       });
@@ -178,6 +200,10 @@ export function AiConfig() {
   const handleSave = async () => {
     if (!model.trim()) {
       toast.error(t('missingModel'));
+      return;
+    }
+    if (provider === 'custom' && !customEndpoint.trim()) {
+      toast.error(t('missingEndpoint'));
       return;
     }
     if (!configured && !keyEdited) {
@@ -281,6 +307,9 @@ export function AiConfig() {
                     <SelectItem value="anthropic">
                       {PROVIDER_LABEL.anthropic}
                     </SelectItem>
+                    <SelectItem value="custom">
+                      {PROVIDER_LABEL.custom}
+                    </SelectItem>
                   </SelectContent>
                 </Select>
               </div>
@@ -295,6 +324,26 @@ export function AiConfig() {
                   disabled={disabled}
                 />
               </div>
+
+              {provider === 'custom' && (
+                <div className="sm:col-span-2 flex flex-col sm:flex-row sm:items-center justify-between gap-2 rounded-lg border border-primary/20 bg-primary/5 p-3 text-xs">
+                  <div className="flex items-center gap-2 overflow-hidden text-muted-foreground">
+                    <span className="font-semibold text-foreground shrink-0">{t('customEndpoint')}</span>
+                    <code className="truncate font-mono text-primary font-medium">{customEndpoint}</code>
+                  </div>
+                  <Button
+                    type="button"
+                    variant="outline"
+                    size="sm"
+                    onClick={() => setShowCustomDialog(true)}
+                    disabled={disabled}
+                    className="shrink-0 text-xs h-7 gap-1"
+                  >
+                    <SlidersHorizontal className="h-3 w-3" />
+                    {t('configure')}
+                  </Button>
+                </div>
+              )}
             </div>
 
             <div className="space-y-2">
@@ -521,6 +570,17 @@ export function AiConfig() {
           </Button>
         </div>
       </div>
+
+      <CustomAiDialog
+        open={showCustomDialog}
+        onOpenChange={setShowCustomDialog}
+        endpoint={customEndpoint}
+        model={model}
+        onApply={({ endpoint: newEndpoint, model: newModel }) => {
+          setCustomEndpoint(newEndpoint);
+          setModel(newModel);
+        }}
+      />
     </div>
   );
 }
