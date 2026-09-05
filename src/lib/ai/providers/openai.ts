@@ -134,6 +134,16 @@ export async function generateOpenAi(args: OpenAiProviderArgs): Promise<Provider
     })
   }
 
+  if (url.includes('openrouter.ai') && !cleanKey.startsWith('sk-or-v1-')) {
+    throw new AiError(
+      'Invalid OpenRouter key. OpenRouter API keys must start with "sk-or-v1-". Please check and re-enter your OpenRouter key.',
+      {
+        code: 'invalid_key',
+        status: 400,
+      },
+    )
+  }
+
   let res: Response
   try {
     res = await fetch(url, {

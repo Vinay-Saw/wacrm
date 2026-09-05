@@ -68,6 +68,10 @@ export async function providerHttpError(
     // Non-JSON error body — fall back to the status line.
   }
 
+  if (detail === 'Missing Authentication header') {
+    detail = 'Missing or invalid token. OpenRouter API keys must start with "sk-or-v1-".'
+  }
+
   const { status } = res
   const code =
     status === 401 || status === 403

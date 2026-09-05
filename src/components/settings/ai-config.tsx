@@ -48,7 +48,7 @@ const PROVIDER_LABEL: Record<AiProvider, string> = {
 const KEY_PLACEHOLDER: Record<AiProvider, string> = {
   openai: 'sk-...',
   anthropic: 'sk-ant-...',
-  custom: 'sk-or-... (API key for custom endpoint)',
+  custom: 'sk-or-v1-... (OpenRouter API key)',
 };
 
 export function AiConfig() {
@@ -271,6 +271,16 @@ export function AiConfig() {
       toast.error(t('missingApiKey'));
       return;
     }
+    if (
+      provider === 'custom' &&
+      customEndpoint.includes('openrouter.ai') &&
+      keyEdited &&
+      apiKey.trim() &&
+      !apiKey.trim().startsWith('sk-or-v1-')
+    ) {
+      toast.error('OpenRouter API keys must start with "sk-or-v1-". Please check your key.');
+      return;
+    }
     setTesting(true);
     try {
       const res = await fetch('/api/ai/test', {
@@ -301,6 +311,16 @@ export function AiConfig() {
     }
     if (fallbackKeyEdited && !fallbackApiKey.trim()) {
       toast.error(t('fallbackMissingApiKey'));
+      return;
+    }
+    if (
+      fallbackProvider === 'custom' &&
+      fallbackEndpoint.includes('openrouter.ai') &&
+      fallbackKeyEdited &&
+      fallbackApiKey.trim() &&
+      !fallbackApiKey.trim().startsWith('sk-or-v1-')
+    ) {
+      toast.error('OpenRouter API keys must start with "sk-or-v1-". Please check your key.');
       return;
     }
     setTestingFallback(true);
@@ -341,6 +361,16 @@ export function AiConfig() {
     }
     if (keyEdited && !apiKey.trim()) {
       toast.error(t('missingApiKey'));
+      return;
+    }
+    if (
+      provider === 'custom' &&
+      customEndpoint.includes('openrouter.ai') &&
+      keyEdited &&
+      apiKey.trim() &&
+      !apiKey.trim().startsWith('sk-or-v1-')
+    ) {
+      toast.error('OpenRouter API keys must start with "sk-or-v1-". Please check your key.');
       return;
     }
     if (fallbackEnabled) {
