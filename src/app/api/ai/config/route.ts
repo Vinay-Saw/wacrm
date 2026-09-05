@@ -226,6 +226,9 @@ export async function POST(request: Request) {
     if (rawKey) {
       apiKeyPlain = rawKey
     } else if (storedPrimaryKey) {
+      if (storedPrimaryProvider && provider !== storedPrimaryProvider) {
+        return bad(`An API key is required when changing provider to ${provider}.`)
+      }
       apiKeyPlain = storedPrimaryKey
     } else {
       return bad('api_key is required')
@@ -261,6 +264,9 @@ export async function POST(request: Request) {
       if (rawFbKey) {
         fbKeyPlain = rawFbKey
       } else if (storedFallbackKey) {
+        if (storedFallbackProvider && fbProvider !== storedFallbackProvider) {
+          return bad(`An API key is required when changing fallback provider to ${fbProvider}.`)
+        }
         fbKeyPlain = storedFallbackKey
       } else {
         return bad('fallback api_key is required when fallback is enabled')

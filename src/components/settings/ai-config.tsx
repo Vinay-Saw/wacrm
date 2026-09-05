@@ -96,6 +96,8 @@ export function AiConfig() {
   // refetches instead of showing the previous account's config. Mirrors
   // the loadedAccountIdRef pattern in whatsapp-config.tsx.
   const loadedAccountIdRef = useRef<string | null>(null);
+  const savedProviderRef = useRef<AiProvider | null>(null);
+  const savedFallbackProviderRef = useRef<AiProvider | null>(null);
 
   const fetchConfig = useCallback(async () => {
     setLoading(true);
@@ -109,6 +111,7 @@ export function AiConfig() {
       if (data.configured) {
         setConfigured(true);
         setProvider(data.provider);
+        savedProviderRef.current = data.provider;
         setModel(data.model);
         if (data.endpoint) {
           setCustomEndpoint(data.endpoint);
@@ -128,6 +131,7 @@ export function AiConfig() {
         if (data.fallback && data.fallback.enabled) {
           setFallbackEnabled(true);
           setFallbackProvider(data.fallback.provider ?? 'anthropic');
+          savedFallbackProviderRef.current = data.fallback.provider ?? 'anthropic';
           setFallbackModel(data.fallback.model ?? AI_PROVIDER_DEFAULT_MODEL.anthropic);
           if (data.fallback.endpoint) {
             setFallbackEndpoint(data.fallback.endpoint);
@@ -138,6 +142,7 @@ export function AiConfig() {
         } else {
           setFallbackEnabled(false);
           setFallbackProvider('anthropic');
+          savedFallbackProviderRef.current = null;
           setFallbackModel(AI_PROVIDER_DEFAULT_MODEL.anthropic);
           setFallbackEndpoint(AI_DEFAULT_CUSTOM_ENDPOINT);
           setFallbackApiKey('');
@@ -166,6 +171,16 @@ export function AiConfig() {
   // typed a custom model.
   const handleProviderChange = (next: AiProvider) => {
     setProvider(next);
+    if (savedProviderRef.current && next !== savedProviderRef.current) {
+      setApiKey('');
+      setHasStoredKey(false);
+      setKeyEdited(true);
+    } else if (savedProviderRef.current && next === savedProviderRef.current) {
+      setApiKey(MASKED_KEY);
+      setHasStoredKey(true);
+      setKeyEdited(false);
+    }
+
     if (next === 'custom') {
       setShowCustomDialog(true);
       if (
@@ -187,6 +202,16 @@ export function AiConfig() {
 
   const handleFallbackProviderChange = (next: AiProvider) => {
     setFallbackProvider(next);
+    if (savedFallbackProviderRef.current && next !== savedFallbackProviderRef.current) {
+      setFallbackApiKey('');
+      setHasStoredFallbackKey(false);
+      setFallbackKeyEdited(true);
+    } else if (savedFallbackProviderRef.current && next === savedFallbackProviderRef.current) {
+      setFallbackApiKey(MASKED_KEY);
+      setHasStoredFallbackKey(true);
+      setFallbackKeyEdited(false);
+    }
+
     if (next === 'custom') {
       setShowFallbackCustomDialog(true);
       if (
@@ -238,6 +263,14 @@ export function AiConfig() {
   });
 
   const handleTest = async () => {
+    if (!keyEdited && !hasStoredKey) {
+      toast.error(t('missingApiKey'));
+      return;
+    }
+    if (keyEdited && !apiKey.trim()) {
+      toast.error(t('missingApiKey'));
+      return;
+    }
     setTesting(true);
     try {
       const res = await fetch('/api/ai/test', {
@@ -262,6 +295,14 @@ export function AiConfig() {
   };
 
   const handleTestFallback = async () => {
+    if (!fallbackKeyEdited && !hasStoredFallbackKey) {
+      toast.error(t('fallbackMissingApiKey'));
+      return;
+    }
+    if (fallbackKeyEdited && !fallbackApiKey.trim()) {
+      toast.error(t('fallbackMissingApiKey'));
+      return;
+    }
     setTestingFallback(true);
     try {
       const res = await fetch('/api/ai/test', {
@@ -294,7 +335,11 @@ export function AiConfig() {
       toast.error(t('missingEndpoint'));
       return;
     }
-    if (!configured && !keyEdited) {
+    if (!hasStoredKey && !apiKey.trim()) {
+      toast.error(t('missingApiKey'));
+      return;
+    }
+    if (keyEdited && !apiKey.trim()) {
       toast.error(t('missingApiKey'));
       return;
     }
@@ -307,7 +352,11 @@ export function AiConfig() {
         toast.error(t('fallbackMissingEndpoint'));
         return;
       }
-      if (!hasStoredFallbackKey && !fallbackKeyEdited) {
+      if (!hasStoredFallbackKey && !fallbackApiKey.trim()) {
+        toast.error(t('fallbackMissingApiKey'));
+        return;
+      }
+      if (fallbackKeyEdited && !fallbackApiKey.trim()) {
         toast.error(t('fallbackMissingApiKey'));
         return;
       }

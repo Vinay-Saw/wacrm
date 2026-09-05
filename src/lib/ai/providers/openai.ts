@@ -121,12 +121,25 @@ export async function generateOpenAi(args: OpenAiProviderArgs): Promise<Provider
       : { max_tokens: MAX_OUTPUT_TOKENS }),
   }
 
+  const cleanKey = (apiKey || '')
+    .trim()
+    .replace(/^['"]+|['"]+$/g, '')
+    .replace(/^Bearer\s+/i, '')
+    .trim()
+
+  if (!cleanKey) {
+    throw new AiError('API key is missing. Please enter your API key.', {
+      code: 'missing_key',
+      status: 400,
+    })
+  }
+
   let res: Response
   try {
     res = await fetch(url, {
       method: 'POST',
       headers: {
-        Authorization: `Bearer ${apiKey}`,
+        Authorization: `Bearer ${cleanKey}`,
         'Content-Type': 'application/json',
         'HTTP-Referer': process.env.NEXT_PUBLIC_SITE_URL || 'https://automacrm.vercel.app',
         'X-Title': 'Automa CRM',

@@ -69,7 +69,7 @@ export async function POST(request: Request) {
     if (!apiKeyPlain) {
       const { data: existing } = await supabase
         .from('ai_configs')
-        .select('api_key')
+        .select('api_key, provider, model')
         .eq('account_id', accountId)
         .maybeSingle()
       if (!existing?.api_key) {
@@ -78,6 +78,29 @@ export async function POST(request: Request) {
           { status: 400 },
         )
       }
+
+      let storedProvider = existing.provider
+      if (existing.model?.startsWith('chain|')) {
+        try {
+          const parsedChain = JSON.parse(existing.model.slice(6))
+          storedProvider =
+            body.target === 'fallback'
+              ? parsedChain?.fallback?.provider
+              : parsedChain?.primary?.provider
+        } catch {}
+      } else if (existing.model?.startsWith('custom|')) {
+        storedProvider = 'custom'
+      } else if (body.target === 'fallback') {
+        storedProvider = null
+      }
+
+      if (storedProvider && storedProvider !== provider) {
+        return NextResponse.json(
+          { error: `Enter an API key to test ${provider}.` },
+          { status: 400 },
+        )
+      }
+
       try {
         const decrypted = decrypt(existing.api_key)
         if (decrypted.startsWith('{') && decrypted.endsWith('}')) {
@@ -103,6 +126,13 @@ export async function POST(request: Request) {
           { status: 400 },
         )
       }
+    }
+
+    if (!apiKeyPlain || !apiKeyPlain.trim()) {
+      return NextResponse.json(
+        { error: 'Enter an API key to test.' },
+        { status: 400 },
+      )
     }
 
     try {
