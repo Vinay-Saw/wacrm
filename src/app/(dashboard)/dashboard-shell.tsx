@@ -7,13 +7,14 @@ import { Sidebar } from "@/components/layout/sidebar";
 import { Header } from "@/components/layout/header";
 import { AccountAccessAlert } from "@/components/layout/account-access-alert";
 import { PresenceHeartbeat } from "@/components/presence/presence-heartbeat";
+import { AccountVerificationGate } from "@/components/auth/account-verification-gate";
 
 // Auth-gated dashboard shell. Extracted from the layout so the layout
 // itself can stay a server component and export metadata (noindex) —
 // client components can't export Next's metadata object.
 
 function DashboardShellInner({ children }: { children: React.ReactNode }) {
-  const { user, loading } = useAuth();
+  const { user, loading, accountStatus, accountTillDate } = useAuth();
   const router = useRouter();
 
   // Sidebar drawer state — only used on mobile. On lg+ the sidebar is
@@ -39,6 +40,15 @@ function DashboardShellInner({ children }: { children: React.ReactNode }) {
   }
 
   if (!user) return null;
+
+  if (accountStatus === "pending" || accountStatus === "expired") {
+    return (
+      <AccountVerificationGate
+        status={accountStatus}
+        tillDate={accountTillDate}
+      />
+    );
+  }
 
   return (
     <div className="flex h-screen overflow-hidden bg-background">

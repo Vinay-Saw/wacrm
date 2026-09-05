@@ -43,6 +43,8 @@ interface AccountSummary {
   /** Default deal currency (ISO-4217). NOT NULL DEFAULT 'USD' in the
    *  DB (migration 021); narrowed to DEFAULT_CURRENCY when absent. */
   default_currency: string;
+  is_active: boolean;
+  till_date: string | null;
 }
 
 /**
@@ -59,6 +61,10 @@ export type AccountStatus =
   | "loading"
   /** Account + role resolved; normal operation. */
   | "ready"
+  /** Account is awaiting administrator approval. */
+  | "pending"
+  /** Account access expiration date has passed. */
+  | "expired"
   /** Signed in, but no profile row / no account / no role on it. */
   | "unlinked"
   /** The profile lookup itself failed after retrying. */
@@ -130,6 +136,10 @@ interface AuthContextValue {
   canEditSettings: boolean;
   /** True if the caller can send messages and edit operational data (agent+). */
   canSendMessages: boolean;
+  /** Gatekeeping: true if account is activated by admin. */
+  accountIsActive: boolean;
+  /** Gatekeeping: optional expiration date. */
+  accountTillDate: string | null;
 }
 
 const AuthContext = createContext<AuthContextValue | null>(null);
@@ -239,7 +249,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
             .from("accounts")
             // default_currency added in migration 021; narrowed to the
             // USD fallback below for older schemas where it reads null.
-            .select("id, name, default_currency")
+            .select("id, name, default_currency, is_active, till_date")
             .eq("id", data.account_id)
             .maybeSingle();
           if (accountErr) {
@@ -254,6 +264,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
               id: account.id,
               name: account.name,
               default_currency: account.default_currency ?? DEFAULT_CURRENCY,
+              is_active: account.is_active ?? true,
+              till_date: account.till_date ?? null,
             };
           }
         }
@@ -421,9 +433,13 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       ? "loading"
       : !profile
         ? "error"
-        : derived.accountId && derived.accountRole
-          ? "ready"
-          : "unlinked";
+        : !derived.accountId || !derived.accountRole
+          ? "unlinked"
+          : account && account.is_active === false
+            ? "pending"
+            : account && account.till_date && new Date(account.till_date).getTime() <= Date.now()
+              ? "expired"
+              : "ready";
 
   return (
     <AuthContext.Provider
@@ -438,6 +454,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         defaultCurrency: account?.default_currency ?? DEFAULT_CURRENCY,
         accountStatus,
         accountStatusDetail: statusDetail,
+        accountIsActive: account ? account.is_active : true,
+        accountTillDate: account ? account.till_date : null,
         ...derived,
       }}
     >
@@ -481,6 +499,8 @@ export function useAuth(): AuthContextValue {
       canManageMembers: false,
       canEditSettings: false,
       canSendMessages: false,
+      accountIsActive: true,
+      accountTillDate: null,
     };
   }
   return ctx;

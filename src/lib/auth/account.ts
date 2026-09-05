@@ -87,8 +87,13 @@ export interface AccountContext {
   accountId: string;
   /** Caller's role within their account. */
   role: AccountRole;
-  /** Lightweight account meta — id + name. */
-  account: { id: string; name: string };
+  /** Lightweight account meta — id + name + gatekeeping status. */
+  account: {
+    id: string;
+    name: string;
+    isActive?: boolean;
+    tillDate?: string | null;
+  };
 }
 
 /**
@@ -149,7 +154,7 @@ export async function getCurrentAccount(): Promise<AccountContext> {
   // RLS, so it stays robust against cache staleness and older schemas.
   const { data: account, error: accountErr } = await supabase
     .from("accounts")
-    .select("id, name")
+    .select("id, name, is_active, till_date")
     .eq("id", data.account_id)
     .maybeSingle();
 
@@ -163,12 +168,33 @@ export async function getCurrentAccount(): Promise<AccountContext> {
     throw new ForbiddenError("Profile is not linked to an account");
   }
 
+  const isActive = account.is_active ?? true;
+  if (!isActive) {
+    throw new ForbiddenError(
+      "Welcome! Your account is pending verification by the Automa team. We will activate your workspace shortly.",
+    );
+  }
+
+  if (
+    account.till_date &&
+    new Date(account.till_date).getTime() <= Date.now()
+  ) {
+    throw new ForbiddenError(
+      "Workspace access has expired. Please contact an administrator.",
+    );
+  }
+
   return {
     supabase,
     userId: user.id,
     accountId: data.account_id,
     role: data.account_role,
-    account: { id: account.id, name: account.name },
+    account: {
+      id: account.id,
+      name: account.name,
+      isActive,
+      tillDate: account.till_date ?? null,
+    },
   };
 }
 
