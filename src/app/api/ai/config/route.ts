@@ -51,7 +51,48 @@ export async function GET() {
     let provider = safe.provider as AiProvider
     let model = safe.model
     let endpoint: string | null = null
-    if (safe.model && safe.model.startsWith('custom|')) {
+    let fallback: {
+      enabled: boolean
+      provider: AiProvider
+      model: string
+      endpoint: string | null
+      has_key: boolean
+    } | null = null
+
+    let hasFallbackKey = false
+    if (api_key) {
+      try {
+        const decrypted = decrypt(api_key)
+        if (decrypted.startsWith('{') && decrypted.endsWith('}')) {
+          const parsed = JSON.parse(decrypted)
+          hasFallbackKey = Boolean(parsed?.fallback)
+        }
+      } catch {
+        // Ignore decrypt error
+      }
+    }
+
+    if (safe.model && safe.model.startsWith('chain|')) {
+      try {
+        const chain = JSON.parse(safe.model.slice(6))
+        if (chain?.primary) {
+          provider = chain.primary.provider || 'openai'
+          model = chain.primary.model || ''
+          endpoint = chain.primary.endpoint || null
+        }
+        if (chain?.fallback) {
+          fallback = {
+            enabled: true,
+            provider: chain.fallback.provider || 'openai',
+            model: chain.fallback.model || '',
+            endpoint: chain.fallback.endpoint || null,
+            has_key: hasFallbackKey,
+          }
+        }
+      } catch (err) {
+        console.error('[ai/config GET] error parsing chain model:', err)
+      }
+    } else if (safe.model && safe.model.startsWith('custom|')) {
       const parts = safe.model.split('|')
       provider = 'custom'
       endpoint = parts[1] || null
@@ -66,6 +107,7 @@ export async function GET() {
       provider,
       model,
       endpoint,
+      fallback,
     })
   } catch (err) {
     return toErrorResponse(err)
@@ -115,6 +157,123 @@ export async function POST(request: Request) {
       }
     }
 
+    // Fallback provider configuration (optional secondary AI provider)
+    let fallbackConfig: {
+      provider: AiProvider
+      model: string
+      endpoint?: string | null
+      apiKey: string
+    } | null = null
+
+    const rawFallback = body.fallback
+    const fallbackEnabled = rawFallback && rawFallback.enabled === true
+
+    // Reuse existing keys
+    const { data: existing } = await supabase
+      .from('ai_configs')
+      .select('id, provider, model, api_key')
+      .eq('account_id', accountId)
+      .maybeSingle()
+
+    let storedPrimaryKey: string | null = null
+    let storedFallbackKey: string | null = null
+    let storedPrimaryModel: string | null = null
+    let storedPrimaryProvider: string | null = null
+    let storedPrimaryEndpoint: string | null = null
+    let storedFallbackModel: string | null = null
+    let storedFallbackProvider: string | null = null
+    let storedFallbackEndpoint: string | null = null
+
+    if (existing?.api_key) {
+      try {
+        const decrypted = decrypt(existing.api_key)
+        if (decrypted.startsWith('{') && decrypted.endsWith('}')) {
+          const parsed = JSON.parse(decrypted)
+          storedPrimaryKey = parsed.primary || null
+          storedFallbackKey = parsed.fallback || null
+        } else {
+          storedPrimaryKey = decrypted
+        }
+      } catch {
+        return bad('Stored API key could not be decrypted — re-enter your key.')
+      }
+    }
+
+    if (existing?.model) {
+      if (existing.model.startsWith('chain|')) {
+        try {
+          const parsedChain = JSON.parse(existing.model.slice(6))
+          storedPrimaryProvider = parsedChain?.primary?.provider || null
+          storedPrimaryModel = parsedChain?.primary?.model || null
+          storedPrimaryEndpoint = parsedChain?.primary?.endpoint || null
+          storedFallbackProvider = parsedChain?.fallback?.provider || null
+          storedFallbackModel = parsedChain?.fallback?.model || null
+          storedFallbackEndpoint = parsedChain?.fallback?.endpoint || null
+        } catch {}
+      } else if (existing.model.startsWith('custom|')) {
+        const parts = existing.model.split('|')
+        storedPrimaryProvider = 'custom'
+        storedPrimaryEndpoint = parts[1] || null
+        storedPrimaryModel = parts.slice(2).join('|') || null
+      } else {
+        storedPrimaryProvider = existing.provider
+        storedPrimaryModel = existing.model
+      }
+    }
+
+    const rawKey = typeof body.api_key === 'string' ? body.api_key.trim() : ''
+    let apiKeyPlain: string
+    if (rawKey) {
+      apiKeyPlain = rawKey
+    } else if (storedPrimaryKey) {
+      apiKeyPlain = storedPrimaryKey
+    } else {
+      return bad('api_key is required')
+    }
+
+    if (fallbackEnabled) {
+      const fbProvider = rawFallback.provider as AiProvider
+      if (fbProvider !== 'openai' && fbProvider !== 'anthropic' && fbProvider !== 'custom') {
+        return bad('fallback provider must be "openai", "anthropic", or "custom"')
+      }
+      const fbModel = typeof rawFallback.model === 'string' ? rawFallback.model.trim() : ''
+      if (!fbModel) return bad('fallback model is required when fallback is enabled')
+
+      let fbEndpoint: string | null = null
+      if (fbProvider === 'custom') {
+        const rawFbEndpoint = typeof rawFallback.endpoint === 'string' ? rawFallback.endpoint.trim() : ''
+        if (!rawFbEndpoint) {
+          return bad('fallback endpoint URL is required for custom fallback provider')
+        }
+        try {
+          const parsed = new URL(rawFbEndpoint)
+          if (parsed.protocol !== 'http:' && parsed.protocol !== 'https:') {
+            return bad('fallback endpoint URL must start with http:// or https://')
+          }
+          fbEndpoint = rawFbEndpoint
+        } catch {
+          return bad('Invalid fallback endpoint URL')
+        }
+      }
+
+      const rawFbKey = typeof rawFallback.api_key === 'string' ? rawFallback.api_key.trim() : ''
+      let fbKeyPlain: string
+      if (rawFbKey) {
+        fbKeyPlain = rawFbKey
+      } else if (storedFallbackKey) {
+        fbKeyPlain = storedFallbackKey
+      } else {
+        return bad('fallback api_key is required when fallback is enabled')
+      }
+
+      fallbackConfig = {
+        provider: fbProvider,
+        model: fbModel,
+        endpoint: fbEndpoint,
+        apiKey: fbKeyPlain,
+      }
+    }
+
     const systemPrompt =
       typeof body.system_prompt === 'string' && body.system_prompt.trim()
         ? body.system_prompt.trim()
@@ -126,10 +285,6 @@ export async function POST(request: Request) {
     if (!Number.isFinite(maxPer)) maxPer = 3
     maxPer = Math.min(20, Math.max(1, Math.floor(maxPer)))
 
-    // Handoff routing target for auto-reply. A non-empty string must be a
-    // member of this account (else the conversation would be assigned to a
-    // stranger); an empty string / null means "leave unassigned" (the
-    // shared queue). Absent → left unchanged on update below.
     const rawHandoff =
       typeof body.handoff_agent_id === 'string' ? body.handoff_agent_id.trim() : ''
     const handoffProvided = 'handoff_agent_id' in body
@@ -145,59 +300,21 @@ export async function POST(request: Request) {
       handoffAgentId = rawHandoff
     }
 
-    const rawKey = typeof body.api_key === 'string' ? body.api_key.trim() : ''
-
-    // Embeddings key (optional, for semantic KB search): a non-empty
-    // string sets/replaces it; an explicit null clears it; absent leaves
-    // it unchanged. The form only sends it when the admin edits it.
     const rawEmbeddingsKey =
       typeof body.embeddings_api_key === 'string'
         ? body.embeddings_api_key.trim()
         : ''
     const clearEmbeddingsKey = body.embeddings_api_key === null
 
-    // Reuse the stored key when the form didn't send a fresh one.
-    const { data: existing } = await supabase
-      .from('ai_configs')
-      .select('id, provider, model, api_key')
-      .eq('account_id', accountId)
-      .maybeSingle()
-
-    let apiKeyPlain: string
-    if (rawKey) {
-      apiKeyPlain = rawKey
-    } else if (existing?.api_key) {
-      try {
-        apiKeyPlain = decrypt(existing.api_key)
-      } catch {
-        return bad('Stored API key could not be decrypted — re-enter your key.')
-      }
-    } else {
-      return bad('api_key is required')
-    }
-
-    const storedEndpoint = existing?.model?.startsWith('custom|')
-      ? existing.model.split('|')[1]
-      : null
-    const storedModel = existing?.model?.startsWith('custom|')
-      ? existing.model.split('|').slice(2).join('|')
-      : existing?.model
-    const existingProvider = existing?.model?.startsWith('custom|')
-      ? 'custom'
-      : existing?.provider
-
-    // Only spend a provider round-trip when the credentials that affect
-    // reachability actually changed. A save that just flips a toggle or
-    // edits the system prompt on an existing, already-validated config
-    // skips the call — no wasted token/latency on the account's key.
-    const credentialsChanged =
+    // Validate primary credentials if changed
+    const primaryChanged =
       !existing ||
       rawKey !== '' ||
-      provider !== existingProvider ||
-      model !== storedModel ||
-      endpoint !== storedEndpoint
+      provider !== storedPrimaryProvider ||
+      model !== storedPrimaryModel ||
+      endpoint !== storedPrimaryEndpoint
 
-    if (credentialsChanged) {
+    if (primaryChanged) {
       try {
         await validateAiCredentials({
           provider,
@@ -214,17 +331,53 @@ export async function POST(request: Request) {
       } catch (err) {
         if (err instanceof AiError) {
           return NextResponse.json(
-            { error: err.message, code: err.code },
+            { error: `Primary provider: ${err.message}`, code: err.code },
             { status: 400 },
           )
         }
-        console.error('[ai/config POST] validation error:', err)
-        return bad('Could not validate the API key with the provider.')
+        console.error('[ai/config POST] primary validation error:', err)
+        return bad('Could not validate the primary API key with the provider.')
       }
     }
 
-    // Validate a new embeddings key before storing (a cheap 1-input
-    // embed), same "verify before save" discipline as the chat key.
+    // Validate fallback credentials if changed
+    if (fallbackConfig) {
+      const rawFbKey = typeof rawFallback.api_key === 'string' ? rawFallback.api_key.trim() : ''
+      const fallbackChanged =
+        !storedFallbackKey ||
+        rawFbKey !== '' ||
+        fallbackConfig.provider !== storedFallbackProvider ||
+        fallbackConfig.model !== storedFallbackModel ||
+        fallbackConfig.endpoint !== storedFallbackEndpoint
+
+      if (fallbackChanged) {
+        try {
+          await validateAiCredentials({
+            provider: fallbackConfig.provider,
+            model: fallbackConfig.model,
+            apiKey: fallbackConfig.apiKey,
+            endpoint: fallbackConfig.endpoint,
+            systemPrompt,
+            isActive,
+            autoReplyEnabled,
+            autoReplyMaxPerConversation: maxPer,
+            handoffAgentId: null,
+            embeddingsApiKey: null,
+          })
+        } catch (err) {
+          if (err instanceof AiError) {
+            return NextResponse.json(
+              { error: `Fallback provider: ${err.message}`, code: err.code },
+              { status: 400 },
+            )
+          }
+          console.error('[ai/config POST] fallback validation error:', err)
+          return bad('Could not validate the fallback API key with the provider.')
+        }
+      }
+    }
+
+    // Validate a new embeddings key before storing
     if (rawEmbeddingsKey) {
       try {
         await embedTexts(rawEmbeddingsKey, ['ping'])
@@ -240,13 +393,41 @@ export async function POST(request: Request) {
       }
     }
 
-    const encryptedKey = rawKey ? encrypt(rawKey) : null
-    const dbProvider = provider === 'custom' ? 'openai' : provider
-    const dbModel = provider === 'custom' ? `custom|${endpoint}|${model}` : model
+    // Prepare encrypted keys payload
+    let combinedKeysPlain: string
+    if (fallbackConfig) {
+      combinedKeysPlain = JSON.stringify({
+        primary: apiKeyPlain,
+        fallback: fallbackConfig.apiKey,
+      })
+    } else {
+      combinedKeysPlain = apiKeyPlain
+    }
+    const encryptedKey = encrypt(combinedKeysPlain)
+
+    // Prepare model payload
+    let dbModel: string
+    if (fallbackConfig) {
+      dbModel = `chain|${JSON.stringify({
+        primary: { provider, model, endpoint },
+        fallback: {
+          provider: fallbackConfig.provider,
+          model: fallbackConfig.model,
+          endpoint: fallbackConfig.endpoint,
+        },
+      })}`
+    } else if (provider === 'custom') {
+      dbModel = `custom|${endpoint}|${model}`
+    } else {
+      dbModel = model
+    }
+
+    const dbProvider = provider === 'anthropic' ? 'anthropic' : 'openai'
 
     const shared: Record<string, unknown> = {
       provider: dbProvider,
       model: dbModel,
+      api_key: encryptedKey,
       system_prompt: systemPrompt,
       is_active: isActive,
       auto_reply_enabled: autoReplyEnabled,

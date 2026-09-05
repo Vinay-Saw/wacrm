@@ -79,7 +79,24 @@ export async function POST(request: Request) {
         )
       }
       try {
-        apiKeyPlain = decrypt(existing.api_key)
+        const decrypted = decrypt(existing.api_key)
+        if (decrypted.startsWith('{') && decrypted.endsWith('}')) {
+          try {
+            const parsed = JSON.parse(decrypted)
+            const targetKey = body.target === 'fallback' ? parsed.fallback : parsed.primary
+            if (!targetKey) {
+              return NextResponse.json(
+                { error: 'Enter an API key to test.' },
+                { status: 400 },
+              )
+            }
+            apiKeyPlain = targetKey
+          } catch {
+            apiKeyPlain = decrypted
+          }
+        } else {
+          apiKeyPlain = decrypted
+        }
       } catch {
         return NextResponse.json(
           { error: 'Stored API key could not be decrypted — re-enter your key.' },

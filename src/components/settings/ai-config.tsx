@@ -73,6 +73,16 @@ export function AiConfig() {
   const [embeddingsKey, setEmbeddingsKey] = useState('');
   const [embeddingsKeyEdited, setEmbeddingsKeyEdited] = useState(false);
   const [hasStoredEmbeddingsKey, setHasStoredEmbeddingsKey] = useState(false);
+  const [fallbackEnabled, setFallbackEnabled] = useState(false);
+  const [fallbackProvider, setFallbackProvider] = useState<AiProvider>('anthropic');
+  const [fallbackModel, setFallbackModel] = useState(AI_PROVIDER_DEFAULT_MODEL.anthropic);
+  const [fallbackEndpoint, setFallbackEndpoint] = useState(AI_DEFAULT_CUSTOM_ENDPOINT);
+  const [showFallbackCustomDialog, setShowFallbackCustomDialog] = useState(false);
+  const [fallbackApiKey, setFallbackApiKey] = useState('');
+  const [fallbackKeyEdited, setFallbackKeyEdited] = useState(false);
+  const [showFallbackKey, setShowFallbackKey] = useState(false);
+  const [hasStoredFallbackKey, setHasStoredFallbackKey] = useState(false);
+  const [testingFallback, setTestingFallback] = useState(false);
   const [systemPrompt, setSystemPrompt] = useState('');
   const [isActive, setIsActive] = useState(false);
   const [autoReplyEnabled, setAutoReplyEnabled] = useState(false);
@@ -114,6 +124,26 @@ export function AiConfig() {
         setHasStoredEmbeddingsKey(Boolean(data.has_embeddings_key));
         setEmbeddingsKey(data.has_embeddings_key ? MASKED_KEY : '');
         setEmbeddingsKeyEdited(false);
+
+        if (data.fallback && data.fallback.enabled) {
+          setFallbackEnabled(true);
+          setFallbackProvider(data.fallback.provider ?? 'anthropic');
+          setFallbackModel(data.fallback.model ?? AI_PROVIDER_DEFAULT_MODEL.anthropic);
+          if (data.fallback.endpoint) {
+            setFallbackEndpoint(data.fallback.endpoint);
+          }
+          setHasStoredFallbackKey(Boolean(data.fallback.has_key));
+          setFallbackApiKey(data.fallback.has_key ? MASKED_KEY : '');
+          setFallbackKeyEdited(false);
+        } else {
+          setFallbackEnabled(false);
+          setFallbackProvider('anthropic');
+          setFallbackModel(AI_PROVIDER_DEFAULT_MODEL.anthropic);
+          setFallbackEndpoint(AI_DEFAULT_CUSTOM_ENDPOINT);
+          setFallbackApiKey('');
+          setFallbackKeyEdited(false);
+          setHasStoredFallbackKey(false);
+        }
       }
     } catch {
       toast.error(t('loadFailed'));
@@ -155,7 +185,31 @@ export function AiConfig() {
     }
   };
 
+  const handleFallbackProviderChange = (next: AiProvider) => {
+    setFallbackProvider(next);
+    if (next === 'custom') {
+      setShowFallbackCustomDialog(true);
+      if (
+        fallbackModel === AI_PROVIDER_DEFAULT_MODEL.openai ||
+        fallbackModel === AI_PROVIDER_DEFAULT_MODEL.anthropic ||
+        fallbackModel.trim() === ''
+      ) {
+        setFallbackModel(AI_PROVIDER_DEFAULT_MODEL.custom);
+      }
+    } else {
+      const isDefaultModel =
+        fallbackModel === AI_PROVIDER_DEFAULT_MODEL.openai ||
+        fallbackModel === AI_PROVIDER_DEFAULT_MODEL.anthropic ||
+        fallbackModel === AI_PROVIDER_DEFAULT_MODEL.custom ||
+        fallbackModel.trim() === '';
+      if (isDefaultModel) setFallbackModel(AI_PROVIDER_DEFAULT_MODEL[next]);
+    }
+  };
+
   const keyPayload = () => (keyEdited ? apiKey.trim() : undefined);
+
+  const fallbackKeyPayload = () =>
+    fallbackKeyEdited ? fallbackApiKey.trim() : undefined;
 
   // undefined = leave unchanged; '' typed = null (clear); text = set.
   const embeddingsKeyPayload = () =>
@@ -167,6 +221,15 @@ export function AiConfig() {
     endpoint: provider === 'custom' ? customEndpoint.trim() : undefined,
     api_key: keyPayload(),
     embeddings_api_key: embeddingsKeyPayload(),
+    fallback: fallbackEnabled
+      ? {
+          enabled: true,
+          provider: fallbackProvider,
+          model: fallbackModel.trim(),
+          endpoint: fallbackProvider === 'custom' ? fallbackEndpoint.trim() : undefined,
+          api_key: fallbackKeyPayload(),
+        }
+      : { enabled: false },
     system_prompt: systemPrompt.trim() || null,
     is_active: isActive,
     auto_reply_enabled: autoReplyEnabled,
@@ -185,6 +248,7 @@ export function AiConfig() {
           model: model.trim(),
           endpoint: provider === 'custom' ? customEndpoint.trim() : undefined,
           api_key: keyPayload(),
+          target: 'primary',
         }),
       });
       const data = await res.json();
@@ -194,6 +258,30 @@ export function AiConfig() {
       toast.error(t('testNetworkError'));
     } finally {
       setTesting(false);
+    }
+  };
+
+  const handleTestFallback = async () => {
+    setTestingFallback(true);
+    try {
+      const res = await fetch('/api/ai/test', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          provider: fallbackProvider,
+          model: fallbackModel.trim(),
+          endpoint: fallbackProvider === 'custom' ? fallbackEndpoint.trim() : undefined,
+          api_key: fallbackKeyPayload(),
+          target: 'fallback',
+        }),
+      });
+      const data = await res.json();
+      if (res.ok) toast.success(t('testSuccess'));
+      else toast.error(data.error ?? t('testRejected'));
+    } catch {
+      toast.error(t('testNetworkError'));
+    } finally {
+      setTestingFallback(false);
     }
   };
 
@@ -209,6 +297,20 @@ export function AiConfig() {
     if (!configured && !keyEdited) {
       toast.error(t('missingApiKey'));
       return;
+    }
+    if (fallbackEnabled) {
+      if (!fallbackModel.trim()) {
+        toast.error(t('fallbackMissingModel'));
+        return;
+      }
+      if (fallbackProvider === 'custom' && !fallbackEndpoint.trim()) {
+        toast.error(t('fallbackMissingEndpoint'));
+        return;
+      }
+      if (!hasStoredFallbackKey && !fallbackKeyEdited) {
+        toast.error(t('fallbackMissingApiKey'));
+        return;
+      }
     }
     setSaving(true);
     try {
@@ -241,6 +343,10 @@ export function AiConfig() {
         setHasStoredKey(false);
         setApiKey('');
         setKeyEdited(false);
+        setFallbackEnabled(false);
+        setFallbackApiKey('');
+        setFallbackKeyEdited(false);
+        setHasStoredFallbackKey(false);
         setIsActive(false);
         setAutoReplyEnabled(false);
         setSystemPrompt('');
@@ -427,6 +533,130 @@ export function AiConfig() {
                 })}
               </p>
             </div>
+
+            {/* Fallback Provider (Auto-Failover) */}
+            <div className="pt-4 border-t border-border space-y-4">
+              <div className="flex items-center justify-between gap-4">
+                <div>
+                  <Label className="text-sm font-medium text-foreground">
+                    {t('enableFallback')}
+                  </Label>
+                  <p className="text-xs text-muted-foreground">
+                    {t('fallbackDesc')}
+                  </p>
+                </div>
+                <Switch
+                  checked={fallbackEnabled}
+                  onCheckedChange={setFallbackEnabled}
+                  disabled={disabled}
+                />
+              </div>
+
+              {fallbackEnabled && (
+                <div className="space-y-4 pt-2">
+                  <div className="grid gap-4 sm:grid-cols-2">
+                    <div className="space-y-2">
+                      <Label>{t('fallbackProvider')}</Label>
+                      <Select
+                        value={fallbackProvider}
+                        onValueChange={(v) => handleFallbackProviderChange(v as AiProvider)}
+                        disabled={disabled}
+                      >
+                        <SelectTrigger>
+                          <SelectValue />
+                        </SelectTrigger>
+                        <SelectContent>
+                          <SelectItem value="openai">{PROVIDER_LABEL.openai}</SelectItem>
+                          <SelectItem value="anthropic">{PROVIDER_LABEL.anthropic}</SelectItem>
+                          <SelectItem value="custom">{PROVIDER_LABEL.custom}</SelectItem>
+                        </SelectContent>
+                      </Select>
+                    </div>
+
+                    <div className="space-y-2">
+                      <Label htmlFor="fallback-ai-model">{t('fallbackModel')}</Label>
+                      <Input
+                        id="fallback-ai-model"
+                        value={fallbackModel}
+                        onChange={(e) => setFallbackModel(e.target.value)}
+                        placeholder={AI_PROVIDER_DEFAULT_MODEL[fallbackProvider]}
+                        disabled={disabled}
+                      />
+                    </div>
+
+                    {fallbackProvider === 'custom' && (
+                      <div className="sm:col-span-2 flex flex-col sm:flex-row sm:items-center justify-between gap-2 rounded-lg border border-primary/20 bg-primary/5 p-3 text-xs">
+                        <div className="flex items-center gap-2 overflow-hidden text-muted-foreground">
+                          <span className="font-semibold text-foreground shrink-0">{t('customEndpoint')}</span>
+                          <code className="truncate font-mono text-primary font-medium">{fallbackEndpoint}</code>
+                        </div>
+                        <Button
+                          type="button"
+                          variant="outline"
+                          size="sm"
+                          onClick={() => setShowFallbackCustomDialog(true)}
+                          disabled={disabled}
+                          className="shrink-0 text-xs h-7 gap-1"
+                        >
+                          <SlidersHorizontal className="h-3 w-3" />
+                          {t('configure')}
+                        </Button>
+                      </div>
+                    )}
+                  </div>
+
+                  <div className="space-y-2">
+                    <Label htmlFor="fallback-ai-key">{t('fallbackApiKey')}</Label>
+                    <div className="flex gap-2">
+                      <div className="relative flex-1">
+                        <Input
+                          id="fallback-ai-key"
+                          type={showFallbackKey ? 'text' : 'password'}
+                          value={fallbackApiKey}
+                          onChange={(e) => {
+                            setFallbackApiKey(e.target.value);
+                            setFallbackKeyEdited(true);
+                          }}
+                          onFocus={() => {
+                            if (!fallbackKeyEdited && hasStoredFallbackKey) {
+                              setFallbackApiKey('');
+                              setFallbackKeyEdited(true);
+                            }
+                          }}
+                          placeholder={KEY_PLACEHOLDER[fallbackProvider]}
+                          disabled={disabled}
+                          autoComplete="off"
+                        />
+                        <button
+                          type="button"
+                          onClick={() => setShowFallbackKey((s) => !s)}
+                          className="absolute right-2 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground"
+                          tabIndex={-1}
+                        >
+                          {showFallbackKey ? (
+                            <EyeOff className="h-4 w-4" />
+                          ) : (
+                            <Eye className="h-4 w-4" />
+                          )}
+                        </button>
+                      </div>
+                      <Button
+                        variant="outline"
+                        onClick={handleTestFallback}
+                        disabled={disabled || testingFallback}
+                      >
+                        {testingFallback ? (
+                          <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                        ) : (
+                          <CheckCircle2 className="mr-2 h-4 w-4" />
+                        )}
+                        {t('testFallbackKey')}
+                      </Button>
+                    </div>
+                  </div>
+                </div>
+              )}
+            </div>
           </CardContent>
         </Card>
 
@@ -579,6 +809,17 @@ export function AiConfig() {
         onApply={({ endpoint: newEndpoint, model: newModel }) => {
           setCustomEndpoint(newEndpoint);
           setModel(newModel);
+        }}
+      />
+
+      <CustomAiDialog
+        open={showFallbackCustomDialog}
+        onOpenChange={setShowFallbackCustomDialog}
+        endpoint={fallbackEndpoint}
+        model={fallbackModel}
+        onApply={({ endpoint: newEndpoint, model: newModel }) => {
+          setFallbackEndpoint(newEndpoint);
+          setFallbackModel(newModel);
         }}
       />
     </div>

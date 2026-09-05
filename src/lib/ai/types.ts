@@ -8,6 +8,13 @@
 
 export type AiProvider = 'openai' | 'anthropic' | 'custom'
 
+export interface SingleAiProviderConfig {
+  provider: AiProvider
+  model: string
+  apiKey: string
+  endpoint?: string | null
+}
+
 /**
  * Account AI setup, decrypted and ready to use. Produced by
  * `loadAiConfig` — `apiKey` is the plaintext BYO provider key
@@ -19,6 +26,8 @@ export interface AiConfig {
   apiKey: string
   /** Custom endpoint URL when provider is 'custom' (e.g. OpenRouter or custom OpenAI-compatible endpoint). */
   endpoint?: string | null
+  /** Optional secondary provider for automatic failover when primary fails. */
+  fallback?: SingleAiProviderConfig | null
   systemPrompt: string | null
   isActive: boolean
   autoReplyEnabled: boolean

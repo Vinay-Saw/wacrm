@@ -69,11 +69,46 @@ export async function loadAiConfig(
     }
   }
 
+  const decryptedRawKey = decrypt(row.api_key)
+  let primaryApiKey = decryptedRawKey
+  let fallbackApiKey: string | null = null
+  if (decryptedRawKey.startsWith('{') && decryptedRawKey.endsWith('}')) {
+    try {
+      const parsedKeys = JSON.parse(decryptedRawKey)
+      if (parsedKeys && typeof parsedKeys === 'object') {
+        primaryApiKey = parsedKeys.primary || ''
+        fallbackApiKey = parsedKeys.fallback || null
+      }
+    } catch {
+      // Not JSON — single key legacy format
+    }
+  }
+
   let provider: AiConfig['provider'] = row.provider
   let model = row.model
   let endpoint: string | null = null
+  let fallback: AiConfig['fallback'] = null
 
-  if (row.model.startsWith('custom|')) {
+  if (row.model.startsWith('chain|')) {
+    try {
+      const chainPayload = JSON.parse(row.model.slice(6))
+      if (chainPayload?.primary) {
+        provider = chainPayload.primary.provider || 'openai'
+        model = chainPayload.primary.model || ''
+        endpoint = chainPayload.primary.endpoint || null
+      }
+      if (chainPayload?.fallback && fallbackApiKey) {
+        fallback = {
+          provider: chainPayload.fallback.provider || 'openai',
+          model: chainPayload.fallback.model || '',
+          endpoint: chainPayload.fallback.endpoint || null,
+          apiKey: fallbackApiKey,
+        }
+      }
+    } catch (err) {
+      console.error('[ai config] failed to parse chain model definition:', err)
+    }
+  } else if (row.model.startsWith('custom|')) {
     const parts = row.model.split('|')
     provider = 'custom'
     endpoint = parts[1] || null
@@ -83,8 +118,9 @@ export async function loadAiConfig(
   return {
     provider,
     model,
-    apiKey: decrypt(row.api_key),
+    apiKey: primaryApiKey,
     endpoint,
+    fallback,
     systemPrompt: row.system_prompt,
     isActive: row.is_active,
     autoReplyEnabled: row.auto_reply_enabled,
