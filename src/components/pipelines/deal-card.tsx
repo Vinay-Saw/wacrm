@@ -1,7 +1,7 @@
 "use client";
 
 import type { Deal, PipelineStage } from "@/types";
-import { Calendar, Check, X } from "lucide-react";
+import { Calendar, Check, X, Building2 } from "lucide-react";
 import { formatCurrency } from "@/lib/currency";
 import { useTranslations } from "next-intl";
 
@@ -79,6 +79,14 @@ export function DealCard({ deal, stage, onEdit, isOverlay }: DealCardProps) {
         </span>
         <span className="truncate text-xs text-muted-foreground">{contactLabel}</span>
       </div>
+
+      {/* Company row */}
+      {deal.company?.name && (
+        <div className="mt-1.5 flex items-center gap-1.5 text-[11px] text-muted-foreground truncate">
+          <Building2 className="h-3 w-3 shrink-0 text-muted-foreground/70" />
+          <span className="truncate font-medium">{deal.company.name}</span>
+        </div>
+      )}
 
       <div className="mt-2 flex items-center justify-between">
         <span className="text-sm font-bold text-primary">

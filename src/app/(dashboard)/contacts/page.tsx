@@ -156,7 +156,7 @@ export default function ContactsPage() {
     } else {
       let query = supabase
         .from('contacts')
-        .select('*', { count: 'exact' })
+        .select('*, company_relation:companies(*)', { count: 'exact' })
         .order('created_at', { ascending: false })
         .range(from, to);
 
@@ -610,7 +610,26 @@ export default function ContactsPage() {
                     {contact.email || <span className="text-muted-foreground">-</span>}
                   </TableCell>
                   <TableCell className="text-muted-foreground hidden lg:table-cell text-sm">
-                    {contact.company || <span className="text-muted-foreground">-</span>}
+                    {contact.company || contact.company_relation?.name ? (
+                      <div className="flex flex-col">
+                        <span className="text-foreground font-medium flex items-center gap-1.5">
+                          {contact.company_relation?.name || contact.company}
+                          {contact.is_primary_company_contact && (
+                            <span className="inline-flex items-center px-1.5 py-0.5 rounded text-[10px] bg-primary/15 text-primary font-semibold">
+                              Primary
+                            </span>
+                          )}
+                        </span>
+                        {contact.job_title && (
+                          <span className="text-xs text-muted-foreground">
+                            {contact.job_title}
+                            {contact.department ? ` (${contact.department})` : ''}
+                          </span>
+                        )}
+                      </div>
+                    ) : (
+                      <span className="text-muted-foreground">-</span>
+                    )}
                   </TableCell>
                   <TableCell className="hidden md:table-cell">
                     <div className="flex flex-wrap gap-1">

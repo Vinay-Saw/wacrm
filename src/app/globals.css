@@ -2,7 +2,7 @@
 @import "tw-animate-css";
 @import "shadcn/tailwind.css";
 
-@custom-variant dark (&:is(.dark *));
+@custom-variant dark (&:is([data-mode="dark"] *, [data-mode="dark"], .dark *, .dark));
 
 @theme inline {
   --color-background: var(--background);
@@ -88,6 +88,7 @@
 
 :root,
 html[data-mode="dark"] {
+  color-scheme: dark;
   --background: oklch(0.13 0.01 260);
   --foreground: oklch(0.985 0 0);
   --card: oklch(0.18 0.01 260);
@@ -117,6 +118,7 @@ html[data-mode="dark"] {
 }
 
 html[data-mode="light"] {
+  color-scheme: light;
   --background: oklch(0.99 0.002 260);
   --foreground: oklch(0.21 0.01 260);
   --card: oklch(1 0 0);
@@ -227,6 +229,29 @@ html[data-theme="rose"] {
   html {
     @apply font-sans;
   }
+
+  /* Universal scrollbar removal across all pages, sidebars, modals and containers
+     Preserves full scrolling by mouse wheel, touchpad, touch gestures, and keyboard */
+  html,
+  body,
+  *,
+  *::before,
+  *::after {
+    scrollbar-width: none !important;
+    -ms-overflow-style: none !important;
+  }
+
+  ::-webkit-scrollbar {
+    display: none !important;
+    width: 0px !important;
+    height: 0px !important;
+  }
+
+  ::-webkit-scrollbar-track,
+  ::-webkit-scrollbar-thumb {
+    display: none !important;
+    background: transparent !important;
+  }
 }
 
 @utility no-scrollbar {
@@ -238,9 +263,81 @@ html[data-theme="rose"] {
 }
 
 .no-scrollbar {
-  -ms-overflow-style: none;
-  scrollbar-width: none;
+  -ms-overflow-style: none !important;
+  scrollbar-width: none !important;
 }
 .no-scrollbar::-webkit-scrollbar {
-  display: none;
+  display: none !important;
+  width: 0 !important;
+  height: 0 !important;
 }
+
+/* Recharts Axis Ticks, Labels, and Text visibility */
+.recharts-cartesian-axis-tick text,
+.recharts-cartesian-axis-tick-value,
+.recharts-text,
+.recharts-label {
+  fill: var(--muted-foreground) !important;
+  color: var(--muted-foreground) !important;
+}
+
+html[data-mode="dark"] .recharts-cartesian-axis-tick text,
+html[data-mode="dark"] .recharts-cartesian-axis-tick-value,
+html[data-mode="dark"] .recharts-text,
+html[data-mode="dark"] .recharts-label,
+.dark .recharts-cartesian-axis-tick text,
+.dark .recharts-cartesian-axis-tick-value,
+.dark .recharts-text,
+.dark .recharts-label {
+  fill: #cbd5e1 !important; /* High contrast slate-300 in dark mode */
+  color: #cbd5e1 !important;
+}
+
+/* Native date input calendar indicator visibility */
+input[type="date"] {
+  color-scheme: light;
+}
+
+html[data-mode="dark"] input[type="date"],
+.dark input[type="date"] {
+  color-scheme: dark !important;
+}
+
+input[type="date"]::-webkit-calendar-picker-indicator {
+  cursor: pointer;
+  border-radius: 4px;
+}
+
+html[data-mode="dark"] input[type="date"]::-webkit-calendar-picker-indicator,
+.dark input[type="date"]::-webkit-calendar-picker-indicator {
+  opacity: 0.85;
+}
+
+html[data-mode="dark"] input[type="date"]::-webkit-calendar-picker-indicator:hover,
+.dark input[type="date"]::-webkit-calendar-picker-indicator:hover {
+  opacity: 1;
+}
+
+/* Native number input spin buttons (remove white fill artifact in dark mode) */
+html[data-mode="dark"] input[type="number"],
+.dark input[type="number"] {
+  color-scheme: dark !important;
+}
+
+html[data-mode="dark"] input[type="number"]::-webkit-inner-spin-button,
+html[data-mode="dark"] input[type="number"]::-webkit-outer-spin-button,
+.dark input[type="number"]::-webkit-inner-spin-button,
+.dark input[type="number"]::-webkit-outer-spin-button {
+  background: transparent !important;
+  color-scheme: dark;
+  opacity: 0.75;
+}
+
+html[data-mode="dark"] input[type="number"]::-webkit-inner-spin-button:hover,
+html[data-mode="dark"] input[type="number"]::-webkit-outer-spin-button:hover,
+.dark input[type="number"]::-webkit-inner-spin-button:hover,
+.dark input[type="number"]::-webkit-outer-spin-button:hover {
+  opacity: 1;
+}
+
+

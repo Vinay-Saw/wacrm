@@ -1,5 +1,7 @@
 import { NextResponse } from 'next/server';
 
+import { z } from 'zod';
+import { parseBody } from '@/lib/api/validate';
 import { requireRole, toErrorResponse } from '@/lib/auth/account';
 import { addContactTagAndDispatch } from '@/lib/contacts/tag-events';
 import {
@@ -7,17 +9,12 @@ import {
   removeContactTag,
 } from '@/lib/contacts/tag-write';
 
+const tagBodySchema = z.object({
+  tag_id: z.string().min(1, 'tag_id required'),
+});
+
 function tagWriteErrorResponse(error: ContactTagWriteError): NextResponse {
   return NextResponse.json({ error: error.message }, { status: error.status });
-}
-
-async function readTagId(request: Request): Promise<string | null> {
-  const body = (await request.json().catch(() => null)) as {
-    tag_id?: unknown;
-  } | null;
-  return typeof body?.tag_id === 'string' && body.tag_id.trim()
-    ? body.tag_id.trim()
-    : null;
 }
 
 export async function POST(
@@ -27,10 +24,7 @@ export async function POST(
   try {
     const ctx = await requireRole('agent');
     const { id: contactId } = await params;
-    const tagId = await readTagId(request);
-    if (!tagId) {
-      return NextResponse.json({ error: 'tag_id required' }, { status: 400 });
-    }
+    const { tag_id: tagId } = await parseBody(request, tagBodySchema);
 
     const result = await addContactTagAndDispatch({
       db: ctx.supabase,
@@ -55,10 +49,7 @@ export async function DELETE(
   try {
     const ctx = await requireRole('agent');
     const { id: contactId } = await params;
-    const tagId = await readTagId(request);
-    if (!tagId) {
-      return NextResponse.json({ error: 'tag_id required' }, { status: 400 });
-    }
+    const { tag_id: tagId } = await parseBody(request, tagBodySchema);
 
     await removeContactTag(ctx.supabase, {
       accountId: ctx.accountId,

@@ -52,6 +52,27 @@ export interface Profile {
 // Account-sharing entities (017_account_sharing.sql)
 // ============================================================
 
+export interface CompanyAddress {
+  street?: string;
+  city?: string;
+  state?: string;
+  postal_code?: string;
+  country?: string;
+}
+
+export interface OrganisationDocumentSettings {
+  estimate_prefix: string;
+  estimate_next: number;
+  order_prefix: string;
+  order_next: number;
+  invoice_prefix: string;
+  invoice_next: number;
+  state?: string;
+  terms_conditions?: string;
+  header_text?: string;
+  footer_text?: string;
+}
+
 export interface Account {
   id: string;
   name: string;
@@ -59,6 +80,17 @@ export interface Account {
   owner_user_id: string;
   created_at: string;
   updated_at: string;
+  default_currency?: string;
+  is_active?: boolean;
+  till_date?: string | null;
+  logo_url?: string | null;
+  phone?: string | null;
+  email?: string | null;
+  website?: string | null;
+  address?: CompanyAddress;
+  tax_id?: string | null;
+  tax_enabled?: boolean;
+  document_settings?: OrganisationDocumentSettings;
 }
 
 /**
@@ -96,6 +128,126 @@ export interface AccountInvitation {
   accepted_by_user_id: string | null;
 }
 
+export interface Company {
+  id: string;
+  account_id: string;
+  created_by?: string | null;
+  name: string;
+  domain?: string | null;
+  industry?: string | null;
+  company_size?: string | null;
+  phone?: string | null;
+  email?: string | null;
+  website?: string | null;
+  billing_address?: CompanyAddress;
+  shipping_address?: CompanyAddress;
+  tax_number?: string | null;
+  notes?: string | null;
+  created_at: string;
+  updated_at: string;
+  // Hydrated stats
+  contacts_count?: number;
+  open_deals_value?: number;
+  contacts?: Contact[];
+  primary_contact?: Contact | null;
+}
+
+export interface Product {
+  id: string;
+  account_id: string;
+  created_by?: string | null;
+  name: string;
+  sku?: string | null;
+  description?: string | null;
+  category?: string | null;
+  unit: string;
+  unit_price: number;
+  tax_rate: number;
+  hsn_sac?: string | null;
+  is_active: boolean;
+  created_at: string;
+  updated_at: string;
+}
+
+export type CommercialDocumentType = 'estimate' | 'sales_order' | 'invoice';
+
+export type CommercialDocumentStatus =
+  | 'draft'
+  | 'sent'
+  | 'accepted'
+  | 'rejected'
+  | 'confirmed'
+  | 'in_progress'
+  | 'fulfilled'
+  | 'invoiced'
+  | 'issued'
+  | 'partially_paid'
+  | 'paid'
+  | 'overdue'
+  | 'cancelled'
+  | 'converted';
+
+export interface CommercialDocumentItem {
+  id?: string;
+  document_id?: string;
+  product_id?: string | null;
+  item_name: string;
+  description?: string | null;
+  hsn_sac?: string | null;
+  unit: string;
+  quantity: number;
+  unit_price: number;
+  discount_percent: number;
+  tax_rate: number;
+  tax_amount: number;
+  total_amount: number;
+  sort_order?: number;
+  created_at?: string;
+  product?: Product;
+}
+
+export interface CommercialDocument {
+  id: string;
+  account_id: string;
+  created_by?: string | null;
+  document_type: CommercialDocumentType;
+  document_number: string;
+  company_id?: string | null;
+  contact_id?: string | null;
+  deal_id?: string | null;
+  parent_document_id?: string | null;
+  issue_date: string;
+  due_date?: string | null;
+  status: CommercialDocumentStatus;
+  currency: string;
+  subtotal: number;
+  tax_enabled: boolean;
+  cgst_amount: number;
+  sgst_amount: number;
+  igst_amount: number;
+  total_tax: number;
+  discount_amount: number;
+  total_amount: number;
+  amount_paid: number;
+  client_name?: string | null;
+  client_email?: string | null;
+  client_phone?: string | null;
+  client_gstin?: string | null;
+  billing_address?: CompanyAddress;
+  shipping_address?: CompanyAddress;
+  supply_state?: string | null;
+  notes?: string | null;
+  terms_conditions?: string | null;
+  created_at: string;
+  updated_at: string;
+  // Relations
+  items?: CommercialDocumentItem[];
+  company?: Company;
+  contact?: Contact;
+  deal?: Deal;
+  parent_document?: CommercialDocument;
+}
+
 export interface Contact {
   id: string;
   user_id: string;
@@ -107,12 +259,17 @@ export interface Contact {
   name?: string;
   email?: string;
   company?: string;
+  company_id?: string | null;
+  job_title?: string | null;
+  department?: string | null;
+  is_primary_company_contact?: boolean;
   avatar_url?: string;
   created_at: string;
   updated_at: string;
   /** Hydrated by queries that embed `contact_tags(tags(*))` (e.g. the
    *  Inbox conversation list, for tag filtering). Absent otherwise. */
   tags?: Tag[];
+  company_relation?: Company;
 }
 
 export interface Tag {
@@ -376,6 +533,7 @@ export interface Deal {
    * contact is deleted (ON DELETE SET NULL). History preserved.
    */
   contact_id: string | null;
+  company_id?: string | null;
   conversation_id?: string;
   assigned_to?: string;
   title: string;
@@ -387,6 +545,7 @@ export interface Deal {
   created_at: string;
   updated_at?: string;
   contact?: Contact;
+  company?: Company;
   stage?: PipelineStage;
   assignee?: Profile;
 }

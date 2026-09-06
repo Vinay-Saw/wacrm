@@ -4,6 +4,9 @@ import { getLocale, getMessages } from 'next-intl/server';
 import { Inter } from "next/font/google";
 import Script from "next/script";
 import "./globals.css";
+import { validateEnv } from "@/lib/env";
+
+validateEnv();
 import { ThemeProvider } from "@/hooks/use-theme";
 import { ThemedToaster } from "@/components/themed-toaster";
 import {
@@ -76,9 +79,19 @@ const THEME_BOOT_SCRIPT = `
     var MODES = ${JSON.stringify(MODES)};
     var savedMode = localStorage.getItem(MODE_KEY);
     d.dataset.mode = MODES.indexOf(savedMode) !== -1 ? savedMode : MODE_DEFAULT;
+    if (d.dataset.mode === "dark") {
+      d.classList.add("dark");
+    } else {
+      d.classList.remove("dark");
+    }
   } catch (_e) {
     d.dataset.theme = ${JSON.stringify(DEFAULT_THEME)};
     d.dataset.mode = ${JSON.stringify(DEFAULT_MODE)};
+    if (DEFAULT_MODE === "dark") {
+      d.classList.add("dark");
+    } else {
+      d.classList.remove("dark");
+    }
   }
 })();
 `;

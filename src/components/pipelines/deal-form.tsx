@@ -30,6 +30,7 @@ import {
   MessageSquare,
   DollarSign,
   Loader2,
+  Building2,
 } from "lucide-react";
 import { toast } from "sonner";
 import { useTranslations } from "next-intl";
@@ -61,12 +62,14 @@ export function DealForm({
   const [value, setValue] = useState("");
   const [currency, setCurrency] = useState(defaultCurrency);
   const [contactId, setContactId] = useState("");
+  const [companyId, setCompanyId] = useState("");
   const [stageId, setStageId] = useState("");
   const [assignedTo, setAssignedTo] = useState("");
   const [expectedCloseDate, setExpectedCloseDate] = useState("");
   const [notes, setNotes] = useState("");
 
   const [contacts, setContacts] = useState<Contact[]>([]);
+  const [companies, setCompanies] = useState<{ id: string; name: string }[]>([]);
   const [profiles, setProfiles] = useState<Profile[]>([]);
   const [linkedConversation, setLinkedConversation] =
     useState<Conversation | null>(null);
@@ -90,6 +93,7 @@ export function DealForm({
       // contact_id is nullable when the contact has been deleted
       // (migration 004: ON DELETE SET NULL). "" means "no selection".
       setContactId(deal.contact_id ?? "");
+      setCompanyId(deal.company_id ?? "");
       setStageId(deal.stage_id);
       setAssignedTo(deal.assigned_to ?? "");
       setExpectedCloseDate(deal.expected_close_date ?? "");
@@ -99,6 +103,7 @@ export function DealForm({
       setValue("");
       setCurrency(defaultCurrency);
       setContactId("");
+      setCompanyId("");
       setStageId(defaultStageId || stages[0]?.id || "");
       setAssignedTo("");
       setExpectedCloseDate("");
@@ -112,13 +117,15 @@ export function DealForm({
     if (!open) return;
     let cancelled = false;
     (async () => {
-      const [c, p] = await Promise.all([
+      const [c, p, comp] = await Promise.all([
         supabase.from("contacts").select("*").order("name"),
         supabase.from("profiles").select("*").order("full_name"),
+        supabase.from("companies").select("id, name").order("name"),
       ]);
       if (cancelled) return;
       setContacts((c.data ?? []) as Contact[]);
       setProfiles((p.data ?? []) as Profile[]);
+      setCompanies((comp.data ?? []) as { id: string; name: string }[]);
     })();
     return () => {
       cancelled = true;
@@ -163,6 +170,7 @@ export function DealForm({
       value: parseFloat(value) || 0,
       currency,
       contact_id: contactId,
+      company_id: companyId || null,
       pipeline_id: pipelineId,
       stage_id: stageId,
       assigned_to: assignedTo || null,
@@ -270,16 +278,53 @@ export function DealForm({
             </div>
 
             <div className="grid gap-2">
+              <div className="flex items-center justify-between">
+                <Label className="text-muted-foreground flex items-center gap-1.5">
+                  <Building2 className="size-3.5" />
+                  <span>Company</span>
+                </Label>
+                <Link
+                  href="/companies"
+                  target="_blank"
+                  className="text-[11px] font-medium text-primary hover:underline"
+                >
+                  + New Company
+                </Link>
+              </div>
+              <select
+                value={companyId}
+                onChange={(e) => setCompanyId(e.target.value)}
+                className="h-9 w-full rounded-lg border border-border bg-muted px-2.5 text-sm text-foreground outline-none focus:border-primary focus:ring-1 focus:ring-primary"
+              >
+                <option value="">No Company (Direct / Individual)</option>
+                {companies.map((comp) => (
+                  <option key={comp.id} value={comp.id}>
+                    {comp.name}
+                  </option>
+                ))}
+              </select>
+            </div>
+
+            <div className="grid gap-2">
               <Label className="text-muted-foreground">{t("contact")}</Label>
               <select
                 value={contactId}
-                onChange={(e) => setContactId(e.target.value)}
+                onChange={(e) => {
+                  const selectedId = e.target.value;
+                  setContactId(selectedId);
+                  const c = contacts.find((contact) => contact.id === selectedId);
+                  if (c?.company_id && !companyId) {
+                    setCompanyId(c.company_id);
+                  }
+                }}
                 className="h-9 w-full rounded-lg border border-border bg-muted px-2.5 text-sm text-foreground outline-none focus:border-primary focus:ring-1 focus:ring-primary"
               >
                 <option value="">{t("selectContact")}</option>
                 {contacts.map((c) => (
                   <option key={c.id} value={c.id}>
                     {c.name || c.phone}
+                    {c.job_title ? ` (${c.job_title})` : ""}
+                    {c.company ? ` • ${c.company}` : ""}
                   </option>
                 ))}
               </select>

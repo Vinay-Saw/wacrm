@@ -1,6 +1,7 @@
 'use client';
 
 import { useState, useEffect } from 'react';
+import Link from 'next/link';
 import { createClient } from '@/lib/supabase/client';
 import { useAuth } from '@/hooks/use-auth';
 import { addContactTag, deleteContactTag } from '@/lib/contacts/tag-api';
@@ -23,8 +24,7 @@ import {
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
-import { Badge } from '@/components/ui/badge';
-import { Loader2, AlertTriangle } from 'lucide-react';
+import { Loader2, AlertTriangle, Building2 } from 'lucide-react';
 import { useTranslations } from 'next-intl';
 
 interface ContactFormProps {
@@ -55,6 +55,11 @@ export function ContactForm({
   const [phone, setPhone] = useState('');
   const [email, setEmail] = useState('');
   const [company, setCompany] = useState('');
+  const [companies, setCompanies] = useState<{ id: string; name: string }[]>([]);
+  const [companyId, setCompanyId] = useState('');
+  const [jobTitle, setJobTitle] = useState('');
+  const [department, setDepartment] = useState('');
+  const [isPrimary, setIsPrimary] = useState(false);
   const [saving, setSaving] = useState(false);
 
   // Duplicate-phone detection for NEW contacts. `exact` (same digits)
@@ -76,9 +81,14 @@ export function ContactForm({
       setPhone(contact?.phone ?? '');
       setEmail(contact?.email ?? '');
       setCompany(contact?.company ?? '');
+      setCompanyId(contact?.company_id ?? '');
+      setJobTitle(contact?.job_title ?? '');
+      setDepartment(contact?.department ?? '');
+      setIsPrimary(contact?.is_primary_company_contact ?? false);
       setSelectedTagIds(contactTags.map((ct) => ct.tag_id));
       setDupMatch(null);
       fetchTags();
+      fetchCompanies();
     }
   }, [open, contact]);
 
@@ -112,6 +122,14 @@ export function ContactForm({
       .order('name');
     if (data) setTags(data);
     setLoadingTags(false);
+  }
+
+  async function fetchCompanies() {
+    const { data } = await supabase
+      .from('companies')
+      .select('id, name')
+      .order('name');
+    if (data) setCompanies(data);
   }
 
   function toggleTag(tagId: string) {
@@ -149,14 +167,26 @@ export function ContactForm({
 
       let contactId = contact?.id;
 
+      const resolvedCompanyName = companyId
+        ? companies.find((c) => c.id === companyId)?.name || company.trim()
+        : company.trim();
+
+      const contactPayload = {
+        name: name.trim() || null,
+        phone: phone.trim(),
+        email: email.trim() || null,
+        company: resolvedCompanyName || null,
+        company_id: companyId || null,
+        job_title: jobTitle.trim() || null,
+        department: department.trim() || null,
+        is_primary_company_contact: !!companyId && isPrimary,
+      };
+
       if (isEdit && contactId) {
         const { error } = await supabase
           .from('contacts')
           .update({
-            name: name.trim() || null,
-            phone: phone.trim(),
-            email: email.trim() || null,
-            company: company.trim() || null,
+            ...contactPayload,
             updated_at: new Date().toISOString(),
           })
           .eq('id', contactId);
@@ -167,10 +197,7 @@ export function ContactForm({
           .insert({
             user_id: user.id,
             account_id: accountId,
-            name: name.trim() || null,
-            phone: phone.trim(),
-            email: email.trim() || null,
-            company: company.trim() || null,
+            ...contactPayload,
           })
           .select('id')
           .single();
@@ -311,17 +338,92 @@ export function ContactForm({
           </div>
 
           <div className="space-y-2">
-            <Label htmlFor="cf-company" className="text-muted-foreground">
-              {t('companyLabel')}
-            </Label>
-            <Input
-              id="cf-company"
-              value={company}
-              onChange={(e) => setCompany(e.target.value)}
-              placeholder={t('companyPlaceholder')}
-              className="bg-muted border-border text-foreground placeholder:text-muted-foreground"
-            />
+            <div className="flex items-center justify-between">
+              <Label htmlFor="cf-company-id" className="text-muted-foreground flex items-center gap-1.5">
+                <Building2 className="size-3.5" />
+                <span>Company Organization</span>
+              </Label>
+              <Link
+                href="/companies"
+                target="_blank"
+                className="text-[11px] font-medium text-primary hover:underline"
+              >
+                + Manage Companies
+              </Link>
+            </div>
+            <select
+              id="cf-company-id"
+              value={companyId}
+              onChange={(e) => {
+                const id = e.target.value;
+                setCompanyId(id);
+                const match = companies.find((c) => c.id === id);
+                if (match) setCompany(match.name);
+              }}
+              className="w-full rounded-md border border-border bg-muted px-3 py-2 text-sm text-foreground focus:outline-none focus:ring-1 focus:ring-primary"
+            >
+              <option value="">No Company (Individual Contact)</option>
+              {companies.map((c) => (
+                <option key={c.id} value={c.id}>
+                  {c.name}
+                </option>
+              ))}
+            </select>
           </div>
+
+          {!companyId && (
+            <div className="space-y-1.5">
+              <Label htmlFor="cf-company" className="text-muted-foreground text-xs">
+                {t('companyLabel')} (Unlinked)
+              </Label>
+              <Input
+                id="cf-company"
+                value={company}
+                onChange={(e) => setCompany(e.target.value)}
+                placeholder={t('companyPlaceholder')}
+                className="bg-muted border-border text-foreground placeholder:text-muted-foreground text-sm"
+              />
+            </div>
+          )}
+
+          <div className="grid grid-cols-2 gap-3">
+            <div className="space-y-1.5">
+              <Label htmlFor="cf-job-title" className="text-muted-foreground text-xs">
+                Job Title
+              </Label>
+              <Input
+                id="cf-job-title"
+                value={jobTitle}
+                onChange={(e) => setJobTitle(e.target.value)}
+                placeholder="e.g. Sales Director"
+                className="bg-muted border-border text-foreground placeholder:text-muted-foreground text-sm"
+              />
+            </div>
+            <div className="space-y-1.5">
+              <Label htmlFor="cf-department" className="text-muted-foreground text-xs">
+                Department
+              </Label>
+              <Input
+                id="cf-department"
+                value={department}
+                onChange={(e) => setDepartment(e.target.value)}
+                placeholder="e.g. Procurement"
+                className="bg-muted border-border text-foreground placeholder:text-muted-foreground text-sm"
+              />
+            </div>
+          </div>
+
+          {companyId && (
+            <label className="flex items-center gap-2 cursor-pointer pt-0.5 text-xs text-foreground select-none">
+              <input
+                type="checkbox"
+                checked={isPrimary}
+                onChange={(e) => setIsPrimary(e.target.checked)}
+                className="rounded border-border text-primary focus:ring-primary h-3.5 w-3.5"
+              />
+              <span>Primary contact for this company</span>
+            </label>
+          )}
 
           <div className="space-y-2">
             <Label className="text-muted-foreground">{t('tagsLabel')}</Label>

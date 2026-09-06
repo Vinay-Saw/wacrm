@@ -10,12 +10,17 @@ import { useUnreadNotifications } from "@/hooks/use-unread-notifications";
 import {
   Bell,
   Bot,
+  Building2,
   Crown,
+  FileText,
   GitBranch,
   LayoutDashboard,
   LogOut,
   MessageSquare,
+  Package,
+  PackageCheck,
   Radio,
+  Receipt,
   Settings,
   Shield,
   User,
@@ -29,12 +34,16 @@ import {
 import type { AccountRole } from "@/lib/auth/roles";
 
 // Per-role chip metadata used in the sidebar's account strip + the
-// Members tab roster. Keeping this near both consumers in a single
-// place avoids drift between the two surfaces — when a designer
-// wants to recolour "agent" rows, this is the one diff.
+// role switcher popover. Kept close to the component so color tweaks
+// live with their consumers; the roles themselves are defined in
+// `@/lib/auth/roles`.
 const ROLE_CHIP: Record<
   AccountRole,
-  { icon: typeof Crown; labelKey: string; className: string }
+  {
+    icon: typeof Shield;
+    labelKey: "roleOwner" | "roleAdmin" | "roleAgent" | "roleViewer";
+    className: string;
+  }
 > = {
   owner: {
     icon: Crown,
@@ -94,7 +103,12 @@ const navItems: NavItem[] = [
   { href: "/inbox", labelKey: "inbox", icon: MessageSquare },
   { href: "/notifications", labelKey: "notifications", icon: Bell },
   { href: "/contacts", labelKey: "contacts", icon: Users },
+  { href: "/companies", labelKey: "companies", icon: Building2 },
+  { href: "/products", labelKey: "products", icon: Package },
   { href: "/pipelines", labelKey: "pipelines", icon: GitBranch },
+  { href: "/estimates", labelKey: "estimates", icon: FileText, beta: true },
+  { href: "/orders", labelKey: "salesOrders", icon: PackageCheck, beta: true },
+  { href: "/invoices", labelKey: "invoices", icon: Receipt, beta: true },
   { href: "/broadcasts", labelKey: "broadcasts", icon: Radio },
   { href: "/automations", labelKey: "automations", icon: Zap },
   { href: "/flows", labelKey: "flows", icon: Workflow, beta: true },
@@ -206,7 +220,7 @@ export function Sidebar({ open = false, onClose }: SidebarProps) {
         </div>
 
         {/* Main navigation */}
-        <nav className="flex-1 overflow-y-auto px-3 py-4">
+        <nav className="flex-1 overflow-y-auto px-3 py-4 no-scrollbar">
           <ul className="flex flex-col gap-1">
             {navItems.map((item) => {
               const isActive =

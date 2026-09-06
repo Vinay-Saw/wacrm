@@ -10,7 +10,29 @@ import {
   sendMessageToConversation,
   validateSendMessageParams,
   SendMessageError,
+  VALID_MESSAGE_TYPES,
 } from '@/lib/whatsapp/send-message'
+import { z } from 'zod'
+import { parseBody } from '@/lib/api/validate'
+
+const sendBodySchema = z
+  .object({
+    conversation_id: z.string().min(1).optional(),
+    contact_id: z.string().min(1).optional(),
+    message_type: z.enum(VALID_MESSAGE_TYPES),
+    content_text: z.string().nullable().optional(),
+    media_url: z.string().nullable().optional(),
+    filename: z.string().nullable().optional(),
+    template_name: z.string().nullable().optional(),
+    template_language: z.string().nullable().optional(),
+    template_params: z.array(z.string()).optional(),
+    template_message_params: z.unknown().optional(),
+    interactive_payload: z.any().optional(),
+    reply_to_message_id: z.string().nullable().optional(),
+  })
+  .refine((data) => Boolean(data.conversation_id || data.contact_id), {
+    message: 'Either conversation_id or contact_id, plus message_type, are required',
+  })
 
 // The dashboard's outbound-send endpoint. It owns auth, per-user rate
 // limiting, and the two ways the UI targets a thread — an existing
@@ -41,7 +63,7 @@ export async function POST(request: Request) {
       return rateLimitResponse(limit)
     }
 
-    const body = await request.json()
+    const body = await parseBody(request, sendBodySchema)
     const {
       // `conversation_id` targets an existing thread (inbox). `contact_id`
       // lets a caller initiate from a contact that may have no conversation
@@ -59,16 +81,6 @@ export async function POST(request: Request) {
       interactive_payload,
       reply_to_message_id,
     } = body
-
-    if ((!conversationIdInput && !contact_id) || !message_type) {
-      return NextResponse.json(
-        {
-          error:
-            'Either conversation_id or contact_id, plus message_type, are required',
-        },
-        { status: 400 }
-      )
-    }
 
     // Validate the message shape up front — before the contact_id path
     // finds-or-creates a conversation — so an invalid payload 400s
@@ -109,7 +121,7 @@ export async function POST(request: Request) {
         )
       }
       conversationId = data.id
-    } else {
+    } else if (contact_id) {
       // contact_id path: verify the contact is in this account first so a
       // caller can't open a conversation against someone else's contact.
       const { data: contactRow, error: contactErr } = await supabase

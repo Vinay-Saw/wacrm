@@ -1,12 +1,13 @@
 'use client';
 
 import { useState, useEffect, useCallback } from 'react';
+import Link from 'next/link';
 import { createClient } from '@/lib/supabase/client';
 import { addContactTag, deleteContactTag } from '@/lib/contacts/tag-api';
 import { useAuth } from '@/hooks/use-auth';
 import { formatCurrency } from '@/lib/currency';
 import { toast } from 'sonner';
-import type { Contact, Tag, ContactTag, ContactNote, CustomField, ContactCustomValue, Deal, MessageTemplate } from '@/types';
+import type { Contact, Tag, ContactNote, CustomField, Deal, MessageTemplate } from '@/types';
 import {
   TemplatePicker,
   type TemplateSendValues,
@@ -25,7 +26,6 @@ import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
 import { Avatar, AvatarFallback } from '@/components/ui/avatar';
 import { Badge } from '@/components/ui/badge';
-import { ScrollArea } from '@/components/ui/scroll-area';
 import {
   Phone,
   Mail,
@@ -36,7 +36,6 @@ import {
   Plus,
   Trash2,
   Save,
-  X,
   DollarSign,
   LayoutTemplate,
 } from 'lucide-react';
@@ -74,6 +73,11 @@ export function ContactDetailView({
   const [editPhone, setEditPhone] = useState('');
   const [editEmail, setEditEmail] = useState('');
   const [editCompany, setEditCompany] = useState('');
+  const [companies, setCompanies] = useState<{ id: string; name: string }[]>([]);
+  const [editCompanyId, setEditCompanyId] = useState('');
+  const [editJobTitle, setEditJobTitle] = useState('');
+  const [editDepartment, setEditDepartment] = useState('');
+  const [editIsPrimary, setEditIsPrimary] = useState(false);
   const [savingDetails, setSavingDetails] = useState(false);
 
   // Tags tab
@@ -103,7 +107,7 @@ export function ContactDetailView({
 
     const { data } = await supabase
       .from('contacts')
-      .select('*')
+      .select('*, company_relation:companies(*)')
       .eq('id', contactId)
       .single();
 
@@ -113,9 +117,21 @@ export function ContactDetailView({
       setEditPhone(data.phone);
       setEditEmail(data.email ?? '');
       setEditCompany(data.company ?? '');
+      setEditCompanyId(data.company_id ?? '');
+      setEditJobTitle(data.job_title ?? '');
+      setEditDepartment(data.department ?? '');
+      setEditIsPrimary(data.is_primary_company_contact ?? false);
     }
     setLoading(false);
   }, [contactId, supabase]);
+
+  const fetchCompanies = useCallback(async () => {
+    const { data } = await supabase
+      .from('companies')
+      .select('id, name')
+      .order('name');
+    if (data) setCompanies(data);
+  }, [supabase]);
 
   const fetchTags = useCallback(async () => {
     if (!contactId) return;
@@ -183,12 +199,13 @@ export function ContactDetailView({
   useEffect(() => {
     if (open && contactId) {
       fetchContact();
+      fetchCompanies();
       fetchTags();
       fetchNotes();
       fetchCustomFields();
       fetchDeals();
     }
-  }, [open, contactId, fetchContact, fetchTags, fetchNotes, fetchCustomFields, fetchDeals]);
+  }, [open, contactId, fetchContact, fetchCompanies, fetchTags, fetchNotes, fetchCustomFields, fetchDeals]);
 
   async function copyPhone() {
     if (!contact) return;
@@ -204,13 +221,21 @@ export function ContactDetailView({
     }
 
     setSavingDetails(true);
+    const resolvedCompanyName = editCompanyId
+      ? companies.find((c) => c.id === editCompanyId)?.name || editCompany.trim()
+      : editCompany.trim();
+
     const { error } = await supabase
       .from('contacts')
       .update({
         name: editName.trim() || null,
         phone: editPhone.trim(),
         email: editEmail.trim() || null,
-        company: editCompany.trim() || null,
+        company: resolvedCompanyName || null,
+        company_id: editCompanyId || null,
+        job_title: editJobTitle.trim() || null,
+        department: editDepartment.trim() || null,
+        is_primary_company_contact: !!editCompanyId && editIsPrimary,
         updated_at: new Date().toISOString(),
       })
       .eq('id', contactId);
@@ -423,10 +448,28 @@ export function ContactDetailView({
                         {contact.email}
                       </span>
                     )}
-                    {contact.company && (
+                    {contact.company_relation ? (
+                      <Link
+                        href="/companies"
+                        className="flex items-center gap-1 text-primary hover:underline font-medium"
+                      >
+                        <Building2 className="size-3" />
+                        {contact.company_relation.name}
+                        {contact.is_primary_company_contact && (
+                          <Badge variant="secondary" className="text-[10px] px-1 py-0 bg-primary/15 text-primary border-0">
+                            Primary
+                          </Badge>
+                        )}
+                      </Link>
+                    ) : contact.company ? (
                       <span className="flex items-center gap-1">
                         <Building2 className="size-3" />
                         {contact.company}
+                      </span>
+                    ) : null}
+                    {contact.job_title && (
+                      <span className="text-muted-foreground">
+                        • {contact.job_title} {contact.department ? `(${contact.department})` : ''}
                       </span>
                     )}
                   </div>
@@ -513,14 +556,83 @@ export function ContactDetailView({
                       className="bg-muted border-border text-foreground h-8 text-sm"
                     />
                   </div>
+
                   <div className="space-y-1.5">
-                    <Label className="text-muted-foreground text-xs">{t('company')}</Label>
-                    <Input
-                      value={editCompany}
-                      onChange={(e) => setEditCompany(e.target.value)}
-                      className="bg-muted border-border text-foreground h-8 text-sm"
-                    />
+                    <div className="flex items-center justify-between">
+                      <Label className="text-muted-foreground text-xs flex items-center gap-1">
+                        <Building2 className="size-3" />
+                        <span>Company</span>
+                      </Label>
+                      <Link
+                        href="/companies"
+                        className="text-[11px] font-medium text-primary hover:underline"
+                      >
+                        Manage
+                      </Link>
+                    </div>
+                    <select
+                      value={editCompanyId}
+                      onChange={(e) => {
+                        const id = e.target.value;
+                        setEditCompanyId(id);
+                        const match = companies.find((c) => c.id === id);
+                        if (match) setEditCompany(match.name);
+                      }}
+                      className="w-full rounded-md border border-border bg-muted px-2.5 py-1.5 text-sm text-foreground focus:outline-none focus:ring-1 focus:ring-primary"
+                    >
+                      <option value="">No Company (Individual Contact)</option>
+                      {companies.map((c) => (
+                        <option key={c.id} value={c.id}>
+                          {c.name}
+                        </option>
+                      ))}
+                    </select>
                   </div>
+
+                  {!editCompanyId && (
+                    <div className="space-y-1.5">
+                      <Label className="text-muted-foreground text-xs">{t('company')} (Unlinked)</Label>
+                      <Input
+                        value={editCompany}
+                        onChange={(e) => setEditCompany(e.target.value)}
+                        className="bg-muted border-border text-foreground h-8 text-sm"
+                      />
+                    </div>
+                  )}
+
+                  <div className="grid grid-cols-2 gap-2">
+                    <div className="space-y-1.5">
+                      <Label className="text-muted-foreground text-xs">Job Title</Label>
+                      <Input
+                        value={editJobTitle}
+                        onChange={(e) => setEditJobTitle(e.target.value)}
+                        placeholder="e.g. Sales Director"
+                        className="bg-muted border-border text-foreground h-8 text-sm"
+                      />
+                    </div>
+                    <div className="space-y-1.5">
+                      <Label className="text-muted-foreground text-xs">Department</Label>
+                      <Input
+                        value={editDepartment}
+                        onChange={(e) => setEditDepartment(e.target.value)}
+                        placeholder="e.g. Procurement"
+                        className="bg-muted border-border text-foreground h-8 text-sm"
+                      />
+                    </div>
+                  </div>
+
+                  {editCompanyId && (
+                    <label className="flex items-center gap-2 cursor-pointer pt-0.5 text-xs text-foreground select-none">
+                      <input
+                        type="checkbox"
+                        checked={editIsPrimary}
+                        onChange={(e) => setEditIsPrimary(e.target.checked)}
+                        className="rounded border-border text-primary focus:ring-primary h-3.5 w-3.5"
+                      />
+                      <span>Primary contact for this company</span>
+                    </label>
+                  )}
+
                   <Button
                     onClick={saveDetails}
                     disabled={savingDetails}

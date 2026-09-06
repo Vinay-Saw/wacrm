@@ -20,11 +20,27 @@ import {
   isAccountRole,
   type AccountRole,
 } from "@/lib/auth/roles";
+import type { Profile as CanonicalProfile } from "@/types";
 
-interface Profile {
-  id: string;
+/**
+ * Session profile state resolved by AuthProvider.
+ *
+ * Derived from canonical domain `Profile` in `@/types`.
+ * In AuthProvider, fields that may be null or unpopulated in database rows
+ * are explicitly typed with their runtime nullability.
+ */
+export type AuthProfile = Omit<
+  CanonicalProfile,
+  | "user_id"
+  | "created_at"
+  | "full_name"
+  | "avatar_url"
+  | "role"
+  | "account_id"
+  | "account_role"
+  | "beta_features"
+> & {
   full_name: string | null;
-  email: string;
   avatar_url: string | null;
   role: string | null;
   /**
@@ -35,7 +51,9 @@ interface Profile {
   beta_features: string[];
   account_id: string | null;
   account_role: AccountRole | null;
-}
+};
+
+export type Profile = AuthProfile;
 
 interface AccountSummary {
   id: string;
@@ -45,6 +63,31 @@ interface AccountSummary {
   default_currency: string;
   is_active: boolean;
   till_date: string | null;
+  logo_url?: string | null;
+  phone?: string | null;
+  email?: string | null;
+  website?: string | null;
+  address?: {
+    street?: string;
+    city?: string;
+    state?: string;
+    postal_code?: string;
+    country?: string;
+  };
+  tax_id?: string | null;
+  tax_enabled?: boolean;
+  document_settings?: {
+    estimate_prefix?: string;
+    estimate_next?: number;
+    order_prefix?: string;
+    order_next?: number;
+    invoice_prefix?: string;
+    invoice_next?: number;
+    state?: string;
+    terms_conditions?: string;
+    header_text?: string;
+    footer_text?: string;
+  };
 }
 
 /**
@@ -152,17 +195,14 @@ function sleep(ms: number) {
   return new Promise((resolve) => setTimeout(resolve, ms));
 }
 
-/** Shape of the `profiles` select below. */
-interface ProfileRow {
-  id: string;
-  full_name: string | null;
-  email: string;
-  avatar_url: string | null;
-  role: string | null;
+/** Shape of the `profiles` raw select query below. */
+type ProfileRow = Pick<
+  AuthProfile,
+  'id' | 'full_name' | 'email' | 'avatar_url' | 'role' | 'account_id'
+> & {
   beta_features: string[] | null;
-  account_id: string | null;
   account_role: string | null;
-}
+};
 
 /**
  * AuthProvider — wrap this around the dashboard layout.
@@ -247,9 +287,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         if (data.account_id) {
           const { data: account, error: accountErr } = await supabase
             .from("accounts")
-            // default_currency added in migration 021; narrowed to the
-            // USD fallback below for older schemas where it reads null.
-            .select("id, name, default_currency, is_active, till_date")
+            .select("id, name, default_currency, is_active, till_date, logo_url, phone, email, website, address, tax_id, tax_enabled, document_settings")
             .eq("id", data.account_id)
             .maybeSingle();
           if (accountErr) {
@@ -266,6 +304,14 @@ export function AuthProvider({ children }: { children: ReactNode }) {
               default_currency: account.default_currency ?? DEFAULT_CURRENCY,
               is_active: account.is_active ?? true,
               till_date: account.till_date ?? null,
+              logo_url: account.logo_url ?? null,
+              phone: account.phone ?? null,
+              email: account.email ?? null,
+              website: account.website ?? null,
+              address: account.address ?? {},
+              tax_id: account.tax_id ?? null,
+              tax_enabled: account.tax_enabled ?? true,
+              document_settings: account.document_settings ?? {},
             };
           }
         }
