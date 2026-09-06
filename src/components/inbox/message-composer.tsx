@@ -240,7 +240,8 @@ export function MessageComposer({
 
   const handleKeyDown = useCallback(
     (e: KeyboardEvent<HTMLTextAreaElement>) => {
-      if (e.key === "Enter" && !e.shiftKey) {
+      if (e.nativeEvent.isComposing) return;
+      if ((e.ctrlKey || e.metaKey) && e.key === "Enter") {
         e.preventDefault();
         handleSend();
       }
@@ -885,7 +886,7 @@ export function MessageComposer({
             // The placeholder text also surfaces the read-only state.
             title={readOnly ? t("readOnlyTitle") : undefined}
             className={cn(
-              "flex-1 resize-none rounded-xl border border-border bg-muted px-4 py-2.5 text-sm text-foreground placeholder-muted-foreground outline-none transition-colors focus:border-primary/50",
+              "flex-1 resize-none rounded-xl border border-border bg-muted px-4 py-2.5 text-sm text-foreground placeholder-muted-foreground outline-none transition-colors focus:border-primary/50 no-scrollbar [scrollbar-width:none] [&::-webkit-scrollbar]:hidden",
               (sessionExpired || readOnly) && "cursor-not-allowed opacity-50"
             )}
           />
@@ -907,9 +908,12 @@ export function MessageComposer({
           `items-end` buttons below the textarea. Indented to line up
           under the textarea left edge. */}
       {!draft && !recording && (
-        <p className="mt-1 pl-11 md:pl-[5.5rem] text-[10px] text-muted-foreground">
-          {t("draftHint")}
-        </p>
+        <div className="mt-1 flex items-center justify-between pl-11 text-[10px] text-muted-foreground md:pl-[5.5rem]">
+          <span>{t("draftHint")}</span>
+          <span className="hidden pr-1 text-muted-foreground/70 md:inline">
+            {t("sendShortcutHint")}
+          </span>
+        </div>
       )}
 
       {/* Interactive-message builder dialog. */}
