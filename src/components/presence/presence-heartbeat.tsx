@@ -50,19 +50,41 @@ export function PresenceHeartbeat() {
 
     const beat = async () => {
       if (cancelled) return;
+      if (typeof navigator !== "undefined" && !navigator.onLine) return;
       // Coalesce bursts: a tab refocus fires visibilitychange AND focus
       // together, so skip a beat within 1s of the last to avoid two RPCs
       // in the same frame. The 30s interval is never affected.
       const t = Date.now();
       if (t - lastBeatAt < 1_000) return;
       lastBeatAt = t;
-      const { error } = await supabase.rpc("touch_presence", {
-        p_status: currentStatus(),
-      });
-      if (error && !cancelled) {
-        // Non-fatal: presence is best-effort. Log once per failure so a
-        // misconfigured RPC is visible without spamming.
-        console.error("[PresenceHeartbeat] touch_presence failed:", error.message);
+      try {
+        const { error } = await supabase.rpc("touch_presence", {
+          p_status: currentStatus(),
+        });
+        if (error && !cancelled) {
+          // Non-fatal: presence is best-effort. Transient network blips
+          // (Failed to fetch, AbortError, sleep wake) are expected and self-heal
+          // on the next beat. Log only real structural/auth RPC errors.
+          const isTransient =
+            error.message?.includes("Failed to fetch") ||
+            error.message?.includes("NetworkError") ||
+            error.message?.includes("AbortError") ||
+            error.message?.includes("Load failed");
+          if (!isTransient) {
+            console.error("[PresenceHeartbeat] touch_presence failed:", error.message);
+          }
+        }
+      } catch (err: unknown) {
+        if (!cancelled) {
+          const msg = err instanceof Error ? err.message : String(err);
+          const isTransient =
+            msg.includes("Failed to fetch") ||
+            msg.includes("NetworkError") ||
+            msg.includes("AbortError");
+          if (!isTransient) {
+            console.error("[PresenceHeartbeat] touch_presence error:", err);
+          }
+        }
       }
     };
 

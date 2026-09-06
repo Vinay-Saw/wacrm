@@ -1,6 +1,7 @@
 import {
   Coins,
   FileText,
+  Globe,
   KeyRound,
   LayoutGrid,
   Palette,
@@ -30,6 +31,7 @@ export const SETTINGS_SECTIONS = [
   'templates',
   'quick-replies',
   'fields',
+  'forms',
   'deals',
   'members',
   'api',
@@ -56,6 +58,7 @@ export const SECTION_META: Record<SettingsSection, SectionMeta> = {
   templates: { id: 'templates', label: 'Templates', icon: FileText, group: 'workspace' },
   'quick-replies': { id: 'quick-replies', label: 'Quick replies', icon: Zap, group: 'workspace' },
   fields: { id: 'fields', label: 'Fields & tags', icon: Tags, group: 'workspace' },
+  forms: { id: 'forms', label: 'Lead forms', icon: Globe, group: 'workspace' },
   deals: { id: 'deals', label: 'Deals & currency', icon: Coins, group: 'workspace' },
   members: { id: 'members', label: 'Team members', icon: UsersRound, group: 'workspace' },
   api: { id: 'api', label: 'API keys', icon: KeyRound, group: 'workspace' },
@@ -79,6 +82,7 @@ function isSection(value: string | null): value is SettingsSection {
  */
 export function resolveSection(raw: string | null): SettingsSection {
   if (raw === 'tags' || raw === 'custom-fields') return 'fields';
+  if (raw === 'lead-forms' || raw === 'forms') return 'forms';
   if (isSection(raw)) return raw;
   return DEFAULT_SECTION;
 }

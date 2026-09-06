@@ -680,3 +680,31 @@ export interface QuickReply {
   created_at: string;
   updated_at: string;
 }
+
+// ============================================================
+// Lead capture forms — public webhook endpoints (migration 041)
+// ============================================================
+
+export interface LeadForm {
+  id: string;
+  account_id: string;
+  created_by?: string | null;
+  name: string;
+  form_key: string;
+  is_active: boolean;
+  pipeline_id?: string | null;
+  stage_id?: string | null;
+  default_deal_title?: string | null;
+  default_deal_value?: number | null;
+  tags: string[];
+  assigned_agent_id?: string | null;
+  success_redirect_url?: string | null;
+  allowed_origins: string[];
+  submissions_count: number;
+  last_submitted_at?: string | null;
+  created_at: string;
+  updated_at: string;
+  pipeline?: Pipeline | null;
+  stage?: PipelineStage | null;
+  assignee?: Profile | null;
+}
