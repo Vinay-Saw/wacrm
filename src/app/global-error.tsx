@@ -1,6 +1,7 @@
 'use client';
 
 import { useEffect } from 'react';
+import * as Sentry from '@sentry/nextjs';
 
 export default function GlobalError({
   error,
@@ -11,20 +12,23 @@ export default function GlobalError({
 }) {
   useEffect(() => {
     console.error(error);
+    Sentry.captureException(error);
   }, [error]);
 
   return (
     <html lang="en">
-      <body className="min-h-screen bg-slate-950 text-slate-100 flex items-center justify-center p-4 font-sans">
-        <div className="max-w-md w-full text-center space-y-4 p-6 bg-slate-900 border border-slate-800 rounded-xl shadow-2xl">
-          <h2 className="text-xl font-semibold text-slate-100">Something went wrong</h2>
+      <body className="flex min-h-screen items-center justify-center bg-slate-950 p-4 font-sans text-slate-100">
+        <div className="w-full max-w-md space-y-4 rounded-xl border border-slate-800 bg-slate-900 p-6 text-center shadow-2xl">
+          <h2 className="text-xl font-semibold text-slate-100">
+            Something went wrong
+          </h2>
           <p className="text-sm text-slate-400">
             An unexpected error occurred. Please try again.
           </p>
           <button
             type="button"
             onClick={() => reset()}
-            className="px-4 py-2 bg-emerald-600 hover:bg-emerald-500 text-white text-sm font-medium rounded-lg transition-colors"
+            className="rounded-lg bg-emerald-600 px-4 py-2 text-sm font-medium text-white transition-colors hover:bg-emerald-500"
           >
             Try again
           </button>

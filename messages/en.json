@@ -337,6 +337,7 @@
       "deleteAction": "Delete",
       "showingPagination": "Showing {start}-{end} of {total}",
       "pageCount": "Page {page} of {total}",
+      "pageOf": "Page {page} of {total}",
       "deleteContactTitle": "Delete Contact",
       "deleteContactDesc": "Are you sure you want to delete {name}? This action cannot be undone.",
       "cancel": "Cancel",

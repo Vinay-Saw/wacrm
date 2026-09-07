@@ -11,7 +11,6 @@ import {
   MessageSquare,
   Globe,
   Phone,
-  Mail,
   MoreHorizontal,
   Edit2,
   Trash2,
@@ -29,7 +28,7 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Badge } from '@/components/ui/badge';
-import { Card, CardContent } from '@/components/ui/card';
+import { Card } from '@/components/ui/card';
 import {
   Dialog,
   DialogContent,
@@ -48,6 +47,28 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { INDIAN_STATES } from '@/components/settings/organisation-settings';
 import type { Company, Contact } from '@/types';
 
+interface CompanyContactItem extends Contact {
+  is_primary_company_contact?: boolean;
+  job_title?: string;
+  department?: string;
+}
+
+interface CompanyDealItem {
+  id: string;
+  title: string;
+  value?: number;
+  currency?: string;
+  status?: string;
+  pipeline?: { name: string };
+  stage?: { name: string };
+  expected_close_date?: string;
+}
+
+interface CompanyDetailData extends Company {
+  contacts?: CompanyContactItem[];
+  deals?: CompanyDealItem[];
+}
+
 export default function CompaniesPage() {
   const { defaultCurrency, canManageMembers } = useAuth();
   const [companies, setCompanies] = useState<Company[]>([]);
@@ -61,7 +82,9 @@ export default function CompaniesPage() {
   const [addContactDialogOpen, setAddContactDialogOpen] = useState(false);
 
   const [selectedCompany, setSelectedCompany] = useState<Company | null>(null);
-  const [companyDetail, setCompanyDetail] = useState<any | null>(null);
+  const [companyDetail, setCompanyDetail] = useState<CompanyDetailData | null>(
+    null
+  );
   const [submitting, setSubmitting] = useState(false);
   const [loadingDetail, setLoadingDetail] = useState(false);
 
@@ -118,7 +141,9 @@ export default function CompaniesPage() {
     setDetailDialogOpen(true);
     setLoadingDetail(true);
     try {
-      const res = await fetch(`/api/companies/${company.id}`, { cache: 'no-store' });
+      const res = await fetch(`/api/companies/${company.id}`, {
+        cache: 'no-store',
+      });
       if (res.ok) {
         const data = await res.json();
         setCompanyDetail(data.company);
@@ -202,7 +227,9 @@ export default function CompaniesPage() {
         },
       };
 
-      const url = selectedCompany ? `/api/companies/${selectedCompany.id}` : '/api/companies';
+      const url = selectedCompany
+        ? `/api/companies/${selectedCompany.id}`
+        : '/api/companies';
       const method = selectedCompany ? 'PATCH' : 'POST';
 
       const res = await fetch(url, {
@@ -232,7 +259,9 @@ export default function CompaniesPage() {
     if (!selectedCompany) return;
     setSubmitting(true);
     try {
-      const res = await fetch(`/api/companies/${selectedCompany.id}`, { method: 'DELETE' });
+      const res = await fetch(`/api/companies/${selectedCompany.id}`, {
+        method: 'DELETE',
+      });
       if (!res.ok) throw new Error('Failed to delete company');
       toast.success('Company deleted');
       setDeleteDialogOpen(false);
@@ -314,19 +343,23 @@ export default function CompaniesPage() {
   };
 
   return (
-    <div className="space-y-6 animate-in fade-in-50 duration-200">
+    <div className="animate-in fade-in-50 space-y-6 duration-200">
       {/* Top Header */}
-      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+      <div className="flex flex-col justify-between gap-4 sm:flex-row sm:items-center">
         <div>
-          <h1 className="text-2xl font-bold tracking-tight text-foreground flex items-center gap-2.5">
-            <Building2 className="h-6 w-6 text-primary" />
+          <h1 className="text-foreground flex items-center gap-2.5 text-2xl font-bold tracking-tight">
+            <Building2 className="text-primary h-6 w-6" />
             Companies
           </h1>
-          <p className="text-sm text-muted-foreground mt-0.5">
-            Manage B2B organizations, track multiple contacts per account, and monitor corporate deals.
+          <p className="text-muted-foreground mt-0.5 text-sm">
+            Manage B2B organizations, track multiple contacts per account, and
+            monitor corporate deals.
           </p>
         </div>
-        <Button onClick={openCreateDialog} className="gap-1.5 shadow-sm self-start sm:self-auto">
+        <Button
+          onClick={openCreateDialog}
+          className="gap-1.5 self-start shadow-sm sm:self-auto"
+        >
           <Plus className="h-4 w-4" />
           New Company
         </Button>
@@ -334,73 +367,79 @@ export default function CompaniesPage() {
 
       {/* Filter / Search Bar */}
       <div className="flex items-center gap-3">
-        <div className="relative flex-1 max-w-sm">
-          <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+        <div className="relative max-w-sm flex-1">
+          <Search className="text-muted-foreground absolute top-1/2 left-3 h-4 w-4 -translate-y-1/2" />
           <Input
             value={search}
             onChange={(e) => setSearch(e.target.value)}
             placeholder="Search by company name, domain, GSTIN..."
-            className="pl-9 h-9 text-xs"
+            className="h-9 pl-9 text-xs"
           />
         </div>
       </div>
 
       {/* Companies List */}
       {loading ? (
-        <div className="flex h-48 items-center justify-center rounded-xl border border-border bg-card">
-          <Loader2 className="h-6 w-6 animate-spin text-muted-foreground" />
+        <div className="border-border bg-card flex h-48 items-center justify-center rounded-xl border">
+          <Loader2 className="text-muted-foreground h-6 w-6 animate-spin" />
         </div>
       ) : companies.length === 0 ? (
-        <div className="flex flex-col items-center justify-center rounded-2xl border border-dashed border-border bg-card/50 p-12 text-center">
-          <div className="flex h-12 w-12 items-center justify-center rounded-xl bg-primary-soft text-primary mb-3">
+        <div className="border-border bg-card/50 flex flex-col items-center justify-center rounded-2xl border border-dashed p-12 text-center">
+          <div className="bg-primary-soft text-primary mb-3 flex h-12 w-12 items-center justify-center rounded-xl">
             <Building2 className="h-6 w-6" />
           </div>
-          <h3 className="text-base font-semibold text-foreground">No companies found</h3>
-          <p className="text-xs text-muted-foreground mt-1 max-w-sm">
+          <h3 className="text-foreground text-base font-semibold">
+            No companies found
+          </h3>
+          <p className="text-muted-foreground mt-1 max-w-sm text-xs">
             {search
               ? 'No companies matched your search query.'
               : 'Add your first B2B company to group decision-makers, track corporate deals, and generate invoices.'}
           </p>
           {!search && (
-            <Button onClick={openCreateDialog} size="sm" className="mt-4 gap-1.5">
+            <Button
+              onClick={openCreateDialog}
+              size="sm"
+              className="mt-4 gap-1.5"
+            >
               <Plus className="h-3.5 w-3.5" />
               Add Company
             </Button>
           )}
         </div>
       ) : (
-        <div className="overflow-hidden rounded-xl border border-border bg-card shadow-sm">
+        <div className="border-border bg-card overflow-hidden rounded-xl border shadow-sm">
           <div className="overflow-x-auto">
             <table className="w-full text-left text-xs">
-              <thead className="border-b border-border bg-muted/40 font-medium text-muted-foreground">
+              <thead className="border-border bg-muted/40 text-muted-foreground border-b font-medium">
                 <tr>
-                  <th className="py-3 px-4">Company Name</th>
-                  <th className="py-3 px-4">Industry / Size</th>
-                  <th className="py-3 px-4">Primary Contact</th>
-                  <th className="py-3 px-4">Contacts</th>
-                  <th className="py-3 px-4">Open Deals</th>
-                  <th className="py-3 px-4">Contact Details</th>
-                  <th className="py-3 px-4 text-right">Actions</th>
+                  <th className="px-4 py-3">Company Name</th>
+                  <th className="px-4 py-3">Industry / Size</th>
+                  <th className="px-4 py-3">Primary Contact</th>
+                  <th className="px-4 py-3">Contacts</th>
+                  <th className="px-4 py-3">Open Deals</th>
+                  <th className="px-4 py-3">Contact Details</th>
+                  <th className="px-4 py-3 text-right">Actions</th>
                 </tr>
               </thead>
-              <tbody className="divide-y divide-border">
+              <tbody className="divide-border divide-y">
                 {companies.map((comp) => (
                   <tr
                     key={comp.id}
                     onClick={() => openCompanyDetail(comp)}
-                    className="hover:bg-muted/40 transition-colors cursor-pointer group"
+                    className="hover:bg-muted/40 group cursor-pointer transition-colors"
                   >
-                    <td className="py-3.5 px-4 font-medium text-foreground">
+                    <td className="text-foreground px-4 py-3.5 font-medium">
                       <div className="flex items-center gap-2.5">
-                        <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-primary-soft text-primary font-bold text-xs uppercase">
+                        <div className="bg-primary-soft text-primary flex h-8 w-8 shrink-0 items-center justify-center rounded-lg text-xs font-bold uppercase">
                           {comp.name.slice(0, 2)}
                         </div>
                         <div>
-                          <div className="font-semibold text-foreground group-hover:text-primary transition-colors">
+                          <div className="text-foreground group-hover:text-primary font-semibold transition-colors">
                             {comp.name}
                           </div>
                           {comp.domain ? (
-                            <div className="text-[11px] text-muted-foreground flex items-center gap-1">
+                            <div className="text-muted-foreground flex items-center gap-1 text-[11px]">
                               <Globe className="h-3 w-3" />
                               {comp.domain}
                             </div>
@@ -408,22 +447,25 @@ export default function CompaniesPage() {
                         </div>
                       </div>
                     </td>
-                    <td className="py-3.5 px-4 text-muted-foreground">
+                    <td className="text-muted-foreground px-4 py-3.5">
                       {comp.industry || '—'}
                       {comp.company_size && (
-                        <div className="text-[10px] text-muted-foreground">{comp.company_size}</div>
+                        <div className="text-muted-foreground text-[10px]">
+                          {comp.company_size}
+                        </div>
                       )}
                     </td>
-                    <td className="py-3.5 px-4">
+                    <td className="px-4 py-3.5">
                       {comp.primary_contact ? (
                         <div className="flex items-center gap-1.5">
-                          <Crown className="h-3 w-3 text-amber-500 shrink-0" />
+                          <Crown className="h-3 w-3 shrink-0 text-amber-500" />
                           <div>
-                            <div className="font-medium text-foreground">
-                              {comp.primary_contact.name || comp.primary_contact.phone}
+                            <div className="text-foreground font-medium">
+                              {comp.primary_contact.name ||
+                                comp.primary_contact.phone}
                             </div>
                             {comp.primary_contact.job_title && (
-                              <div className="text-[10px] text-muted-foreground">
+                              <div className="text-muted-foreground text-[10px]">
                                 {comp.primary_contact.job_title}
                               </div>
                             )}
@@ -433,44 +475,58 @@ export default function CompaniesPage() {
                         <span className="text-muted-foreground">—</span>
                       )}
                     </td>
-                    <td className="py-3.5 px-4">
-                      <Badge variant="secondary" className="gap-1 text-[11px] font-normal">
+                    <td className="px-4 py-3.5">
+                      <Badge
+                        variant="secondary"
+                        className="gap-1 text-[11px] font-normal"
+                      >
                         <Users className="h-3 w-3" />
                         {comp.contacts_count || 0}
                       </Badge>
                     </td>
-                    <td className="py-3.5 px-4 font-semibold text-foreground">
+                    <td className="text-foreground px-4 py-3.5 font-semibold">
                       {comp.open_deals_value
                         ? formatCurrency(comp.open_deals_value, defaultCurrency)
                         : '—'}
                     </td>
-                    <td className="py-3.5 px-4 text-muted-foreground space-y-0.5">
+                    <td className="text-muted-foreground space-y-0.5 px-4 py-3.5">
                       {comp.phone && (
                         <div className="flex items-center gap-1 text-[11px]">
-                          <Phone className="h-3 w-3 text-muted-foreground" />
+                          <Phone className="text-muted-foreground h-3 w-3" />
                           {comp.phone}
                         </div>
                       )}
                       {comp.tax_number && (
-                        <div className="text-[10px] font-mono text-muted-foreground">
+                        <div className="text-muted-foreground font-mono text-[10px]">
                           GST: {comp.tax_number}
                         </div>
                       )}
                     </td>
-                    <td className="py-3.5 px-4 text-right" onClick={(e) => e.stopPropagation()}>
+                    <td
+                      className="px-4 py-3.5 text-right"
+                      onClick={(e) => e.stopPropagation()}
+                    >
                       <DropdownMenu>
                         <DropdownMenuTrigger
                           render={
-                            <Button variant="ghost" size="sm" className="h-8 w-8 p-0" />
+                            <Button
+                              variant="ghost"
+                              size="sm"
+                              className="h-8 w-8 p-0"
+                            />
                           }
                         >
                           <MoreHorizontal className="h-4 w-4" />
                         </DropdownMenuTrigger>
                         <DropdownMenuContent align="end" className="text-xs">
-                          <DropdownMenuItem onClick={() => openCompanyDetail(comp)}>
+                          <DropdownMenuItem
+                            onClick={() => openCompanyDetail(comp)}
+                          >
                             View Company Hub
                           </DropdownMenuItem>
-                          <DropdownMenuItem onClick={() => openEditDialog(comp)}>
+                          <DropdownMenuItem
+                            onClick={() => openEditDialog(comp)}
+                          >
                             <Edit2 className="mr-2 h-3.5 w-3.5" />
                             Edit Details
                           </DropdownMenuItem>
@@ -499,22 +555,25 @@ export default function CompaniesPage() {
 
       {/* Create / Edit Company Dialog */}
       <Dialog open={editDialogOpen} onOpenChange={setEditDialogOpen}>
-        <DialogContent className="border-border bg-popover text-popover-foreground sm:max-w-xl max-h-[90vh] overflow-y-auto">
+        <DialogContent className="border-border bg-popover text-popover-foreground max-h-[90vh] overflow-y-auto sm:max-w-xl">
           <form onSubmit={handleSaveCompany}>
             <DialogHeader>
               <DialogTitle className="text-foreground flex items-center gap-2">
-                <Building2 className="h-5 w-5 text-primary" />
+                <Building2 className="text-primary h-5 w-5" />
                 {selectedCompany ? 'Edit Company' : 'New B2B Company'}
               </DialogTitle>
               <DialogDescription className="text-muted-foreground text-xs">
-                Group decision-makers, track corporate deals, and specify official billing addresses.
+                Group decision-makers, track corporate deals, and specify
+                official billing addresses.
               </DialogDescription>
             </DialogHeader>
 
             <div className="space-y-4 py-3">
               <div className="grid gap-3 sm:grid-cols-2">
                 <div className="space-y-1.5 sm:col-span-2">
-                  <Label htmlFor="c-name" className="text-xs font-medium">Company Name *</Label>
+                  <Label htmlFor="c-name" className="text-xs font-medium">
+                    Company Name *
+                  </Label>
                   <Input
                     id="c-name"
                     value={name}
@@ -524,7 +583,9 @@ export default function CompaniesPage() {
                   />
                 </div>
                 <div className="space-y-1.5">
-                  <Label htmlFor="c-domain" className="text-xs font-medium">Domain / Website</Label>
+                  <Label htmlFor="c-domain" className="text-xs font-medium">
+                    Domain / Website
+                  </Label>
                   <Input
                     id="c-domain"
                     value={domain}
@@ -533,7 +594,9 @@ export default function CompaniesPage() {
                   />
                 </div>
                 <div className="space-y-1.5">
-                  <Label htmlFor="c-industry" className="text-xs font-medium">Industry</Label>
+                  <Label htmlFor="c-industry" className="text-xs font-medium">
+                    Industry
+                  </Label>
                   <Input
                     id="c-industry"
                     value={industry}
@@ -542,7 +605,9 @@ export default function CompaniesPage() {
                   />
                 </div>
                 <div className="space-y-1.5">
-                  <Label htmlFor="c-phone" className="text-xs font-medium">Official Phone</Label>
+                  <Label htmlFor="c-phone" className="text-xs font-medium">
+                    Official Phone
+                  </Label>
                   <Input
                     id="c-phone"
                     value={phone}
@@ -551,7 +616,9 @@ export default function CompaniesPage() {
                   />
                 </div>
                 <div className="space-y-1.5">
-                  <Label htmlFor="c-email" className="text-xs font-medium">Official Email</Label>
+                  <Label htmlFor="c-email" className="text-xs font-medium">
+                    Official Email
+                  </Label>
                   <Input
                     id="c-email"
                     type="email"
@@ -561,20 +628,24 @@ export default function CompaniesPage() {
                   />
                 </div>
                 <div className="space-y-1.5 sm:col-span-2">
-                  <Label htmlFor="c-tax" className="text-xs font-medium">GSTIN / Tax Identification Number</Label>
+                  <Label htmlFor="c-tax" className="text-xs font-medium">
+                    GSTIN / Tax Identification Number
+                  </Label>
                   <Input
                     id="c-tax"
                     value={taxNumber}
                     onChange={(e) => setTaxNumber(e.target.value.toUpperCase())}
                     placeholder="27AABCU9603R1ZM"
-                    className="font-mono uppercase text-xs"
+                    className="font-mono text-xs uppercase"
                   />
                 </div>
               </div>
 
               {/* Billing Address */}
-              <div className="pt-2 border-t border-border space-y-2">
-                <div className="text-xs font-semibold text-foreground">Registered / Billing Address</div>
+              <div className="border-border space-y-2 border-t pt-2">
+                <div className="text-foreground text-xs font-semibold">
+                  Registered / Billing Address
+                </div>
                 <div className="space-y-2">
                   <Input
                     value={street}
@@ -582,7 +653,7 @@ export default function CompaniesPage() {
                     placeholder="Street Address, Suite / Floor"
                     className="text-xs"
                   />
-                  <div className="grid gap-2 grid-cols-2 sm:grid-cols-4">
+                  <div className="grid grid-cols-2 gap-2 sm:grid-cols-4">
                     <Input
                       value={city}
                       onChange={(e) => setCity(e.target.value)}
@@ -592,7 +663,7 @@ export default function CompaniesPage() {
                     <select
                       value={state}
                       onChange={(e) => setState(e.target.value)}
-                      className="flex h-9 w-full rounded-md border border-border bg-muted px-2 py-1 text-xs text-foreground outline-none focus:border-primary"
+                      className="border-border bg-muted text-foreground focus:border-primary flex h-9 w-full rounded-md border px-2 py-1 text-xs outline-none"
                     >
                       <option value="">State</option>
                       {INDIAN_STATES.map((s) => (
@@ -619,11 +690,17 @@ export default function CompaniesPage() {
             </div>
 
             <DialogFooter>
-              <Button type="button" variant="outline" onClick={() => setEditDialogOpen(false)}>
+              <Button
+                type="button"
+                variant="outline"
+                onClick={() => setEditDialogOpen(false)}
+              >
                 Cancel
               </Button>
               <Button type="submit" disabled={submitting}>
-                {submitting && <Loader2 className="mr-1.5 h-4 w-4 animate-spin" />}
+                {submitting && (
+                  <Loader2 className="mr-1.5 h-4 w-4 animate-spin" />
+                )}
                 {selectedCompany ? 'Save Changes' : 'Create Company'}
               </Button>
             </DialogFooter>
@@ -633,30 +710,30 @@ export default function CompaniesPage() {
 
       {/* Company Hub / Detail Dialog */}
       <Dialog open={detailDialogOpen} onOpenChange={setDetailDialogOpen}>
-        <DialogContent className="border-border bg-popover text-popover-foreground sm:max-w-3xl max-h-[90vh] overflow-y-auto">
+        <DialogContent className="border-border bg-popover text-popover-foreground max-h-[90vh] overflow-y-auto sm:max-w-3xl">
           {loadingDetail ? (
             <div className="flex h-64 items-center justify-center">
-              <Loader2 className="h-6 w-6 animate-spin text-muted-foreground" />
+              <Loader2 className="text-muted-foreground h-6 w-6 animate-spin" />
             </div>
           ) : companyDetail ? (
             <div className="space-y-5">
               {/* Header */}
-              <div className="flex items-start justify-between border-b border-border pb-4">
+              <div className="border-border flex items-start justify-between border-b pb-4">
                 <div className="flex items-center gap-3">
-                  <div className="flex h-12 w-12 shrink-0 items-center justify-center rounded-xl bg-primary text-primary-foreground font-bold text-lg uppercase shadow-sm">
+                  <div className="bg-primary text-primary-foreground flex h-12 w-12 shrink-0 items-center justify-center rounded-xl text-lg font-bold uppercase shadow-sm">
                     {companyDetail.name.slice(0, 2)}
                   </div>
                   <div>
-                    <h2 className="text-xl font-bold text-foreground flex items-center gap-2">
+                    <h2 className="text-foreground flex items-center gap-2 text-xl font-bold">
                       {companyDetail.name}
                     </h2>
-                    <div className="flex flex-wrap items-center gap-x-3 gap-y-1 text-xs text-muted-foreground mt-0.5">
+                    <div className="text-muted-foreground mt-0.5 flex flex-wrap items-center gap-x-3 gap-y-1 text-xs">
                       {companyDetail.domain && (
                         <a
                           href={`https://${companyDetail.domain}`}
                           target="_blank"
                           rel="noreferrer"
-                          className="hover:underline flex items-center gap-1 text-primary"
+                          className="text-primary flex items-center gap-1 hover:underline"
                         >
                           <Globe className="h-3 w-3" />
                           {companyDetail.domain}
@@ -670,7 +747,7 @@ export default function CompaniesPage() {
                         </span>
                       )}
                       {companyDetail.tax_number && (
-                        <span className="font-mono text-[11px] bg-muted px-1.5 py-0.5 rounded">
+                        <span className="bg-muted rounded px-1.5 py-0.5 font-mono text-[11px]">
                           GSTIN: {companyDetail.tax_number}
                         </span>
                       )}
@@ -690,16 +767,16 @@ export default function CompaniesPage() {
 
               {/* Tabs: Contacts, Deals, Address & Info */}
               <Tabs defaultValue="contacts" className="w-full">
-                <TabsList className="grid w-full grid-cols-3 bg-muted">
-                  <TabsTrigger value="contacts" className="text-xs gap-1.5">
+                <TabsList className="bg-muted grid w-full grid-cols-3">
+                  <TabsTrigger value="contacts" className="gap-1.5 text-xs">
                     <Users className="h-3.5 w-3.5" />
                     Contacts ({companyDetail.contacts?.length || 0})
                   </TabsTrigger>
-                  <TabsTrigger value="deals" className="text-xs gap-1.5">
+                  <TabsTrigger value="deals" className="gap-1.5 text-xs">
                     <Briefcase className="h-3.5 w-3.5" />
                     Deals ({companyDetail.deals?.length || 0})
                   </TabsTrigger>
-                  <TabsTrigger value="details" className="text-xs gap-1.5">
+                  <TabsTrigger value="details" className="gap-1.5 text-xs">
                     <MapPin className="h-3.5 w-3.5" />
                     Company Details
                   </TabsTrigger>
@@ -708,46 +785,56 @@ export default function CompaniesPage() {
                 {/* Contacts Tab */}
                 <TabsContent value="contacts" className="space-y-3 pt-3">
                   <div className="flex items-center justify-between">
-                    <p className="text-xs text-muted-foreground">
-                      Key decision-makers and contacts associated with {companyDetail.name}:
+                    <p className="text-muted-foreground text-xs">
+                      Key decision-makers and contacts associated with{' '}
+                      {companyDetail.name}:
                     </p>
                     <Button
                       size="sm"
                       onClick={() => setAddContactDialogOpen(true)}
-                      className="gap-1 text-xs h-7"
+                      className="h-7 gap-1 text-xs"
                     >
                       <Plus className="h-3 w-3" />
                       Add Contact
                     </Button>
                   </div>
 
-                  {companyDetail.contacts?.length === 0 ? (
-                    <div className="rounded-xl border border-dashed border-border p-6 text-center text-xs text-muted-foreground">
-                      No contacts linked to this company yet. Click &ldquo;Add Contact&rdquo; to associate employees.
+                  {!companyDetail.contacts ||
+                  companyDetail.contacts.length === 0 ? (
+                    <div className="border-border text-muted-foreground rounded-xl border border-dashed p-6 text-center text-xs">
+                      No contacts linked to this company yet. Click &ldquo;Add
+                      Contact&rdquo; to associate employees.
                     </div>
                   ) : (
                     <div className="grid gap-2">
-                      {companyDetail.contacts.map((ct: any) => (
+                      {companyDetail.contacts?.map((ct: CompanyContactItem) => (
                         <div
                           key={ct.id}
-                          className="flex items-center justify-between rounded-lg border border-border bg-card p-3 text-xs"
+                          className="border-border bg-card flex items-center justify-between rounded-lg border p-3 text-xs"
                         >
                           <div className="flex items-center gap-3">
-                            <div className="flex h-8 w-8 items-center justify-center rounded-full bg-primary-soft text-primary font-semibold text-xs">
+                            <div className="bg-primary-soft text-primary flex h-8 w-8 items-center justify-center rounded-full text-xs font-semibold">
                               {(ct.name || ct.phone).slice(0, 2).toUpperCase()}
                             </div>
                             <div>
                               <div className="flex items-center gap-2">
-                                <span className="font-semibold text-foreground">{ct.name || 'Unnamed'}</span>
+                                <span className="text-foreground font-semibold">
+                                  {ct.name || 'Unnamed'}
+                                </span>
                                 {ct.is_primary_company_contact && (
-                                  <Badge variant="outline" className="text-[10px] bg-amber-500/10 text-amber-500 border-amber-500/20 py-0">
+                                  <Badge
+                                    variant="outline"
+                                    className="border-amber-500/20 bg-amber-500/10 py-0 text-[10px] text-amber-500"
+                                  >
                                     Primary Contact
                                   </Badge>
                                 )}
                               </div>
-                              <div className="text-[11px] text-muted-foreground flex items-center gap-2">
+                              <div className="text-muted-foreground flex items-center gap-2 text-[11px]">
                                 <span>{ct.job_title || 'No title'}</span>
-                                {ct.department && <span>· {ct.department}</span>}
+                                {ct.department && (
+                                  <span>· {ct.department}</span>
+                                )}
                                 <span>· {ct.phone}</span>
                               </div>
                             </div>
@@ -755,7 +842,11 @@ export default function CompaniesPage() {
 
                           <div className="flex items-center gap-1.5">
                             <Link href={`/inbox?contact=${ct.id}`}>
-                              <Button variant="outline" size="sm" className="h-7 text-xs gap-1">
+                              <Button
+                                variant="outline"
+                                size="sm"
+                                className="h-7 gap-1 text-xs"
+                              >
                                 <MessageSquare className="h-3 w-3 text-emerald-500" />
                                 Chat
                               </Button>
@@ -764,7 +855,7 @@ export default function CompaniesPage() {
                               variant="ghost"
                               size="sm"
                               onClick={() => handleUnlinkContact(ct.id)}
-                              className="h-7 w-7 p-0 text-muted-foreground hover:text-destructive"
+                              className="text-muted-foreground hover:text-destructive h-7 w-7 p-0"
                             >
                               <X className="h-3.5 w-3.5" />
                             </Button>
@@ -778,35 +869,43 @@ export default function CompaniesPage() {
                 {/* Deals Tab */}
                 <TabsContent value="deals" className="space-y-3 pt-3">
                   <div className="flex items-center justify-between">
-                    <p className="text-xs text-muted-foreground">
-                      Pipeline deals and opportunities with {companyDetail.name}:
+                    <p className="text-muted-foreground text-xs">
+                      Pipeline deals and opportunities with {companyDetail.name}
+                      :
                     </p>
                   </div>
 
-                  {companyDetail.deals?.length === 0 ? (
-                    <div className="rounded-xl border border-dashed border-border p-6 text-center text-xs text-muted-foreground">
+                  {!companyDetail.deals || companyDetail.deals.length === 0 ? (
+                    <div className="border-border text-muted-foreground rounded-xl border border-dashed p-6 text-center text-xs">
                       No active deals linked to this company yet.
                     </div>
                   ) : (
                     <div className="grid gap-2">
-                      {companyDetail.deals.map((deal: any) => (
+                      {companyDetail.deals?.map((deal: CompanyDealItem) => (
                         <div
                           key={deal.id}
-                          className="flex items-center justify-between rounded-lg border border-border bg-card p-3 text-xs"
+                          className="border-border bg-card flex items-center justify-between rounded-lg border p-3 text-xs"
                         >
                           <div>
-                            <div className="font-semibold text-foreground">{deal.title}</div>
-                            <div className="text-[11px] text-muted-foreground flex items-center gap-2 mt-0.5">
-                              {deal.pipeline?.name && <span>{deal.pipeline.name}</span>}
+                            <div className="text-foreground font-semibold">
+                              {deal.title}
+                            </div>
+                            <div className="text-muted-foreground mt-0.5 flex items-center gap-2 text-[11px]">
+                              {deal.pipeline?.name && (
+                                <span>{deal.pipeline.name}</span>
+                              )}
                               {deal.stage?.name && (
-                                <Badge variant="secondary" className="text-[10px] py-0">
+                                <Badge
+                                  variant="secondary"
+                                  className="py-0 text-[10px]"
+                                >
                                   {deal.stage.name}
                                 </Badge>
                               )}
                             </div>
                           </div>
-                          <div className="text-sm font-bold text-foreground">
-                            {formatCurrency(deal.value, defaultCurrency)}
+                          <div className="text-foreground text-sm font-bold">
+                            {formatCurrency(deal.value || 0, defaultCurrency)}
                           </div>
                         </div>
                       ))}
@@ -816,11 +915,16 @@ export default function CompaniesPage() {
 
                 {/* Details Tab */}
                 <TabsContent value="details" className="space-y-3 pt-3">
-                  <div className="grid gap-3 sm:grid-cols-2 text-xs">
+                  <div className="grid gap-3 text-xs sm:grid-cols-2">
                     <Card className="border-border p-3">
-                      <div className="font-semibold text-foreground mb-1.5">Registered Address</div>
+                      <div className="text-foreground mb-1.5 font-semibold">
+                        Registered Address
+                      </div>
                       <div className="text-muted-foreground space-y-0.5 text-[11px]">
-                        <div>{companyDetail.billing_address?.street || 'No street specified'}</div>
+                        <div>
+                          {companyDetail.billing_address?.street ||
+                            'No street specified'}
+                        </div>
                         <div>
                           {[
                             companyDetail.billing_address?.city,
@@ -830,16 +934,22 @@ export default function CompaniesPage() {
                             .filter(Boolean)
                             .join(', ') || 'No city/state'}
                         </div>
-                        <div>{companyDetail.billing_address?.country || 'India'}</div>
+                        <div>
+                          {companyDetail.billing_address?.country || 'India'}
+                        </div>
                       </div>
                     </Card>
 
                     <Card className="border-border p-3">
-                      <div className="font-semibold text-foreground mb-1.5">Tax & Registration</div>
+                      <div className="text-foreground mb-1.5 font-semibold">
+                        Tax & Registration
+                      </div>
                       <div className="text-muted-foreground space-y-1 text-[11px]">
                         <div>
-                          <span className="text-foreground">GSTIN / Tax ID:</span>{' '}
-                          <code className="font-mono text-foreground font-semibold">
+                          <span className="text-foreground">
+                            GSTIN / Tax ID:
+                          </span>{' '}
+                          <code className="text-foreground font-mono font-semibold">
                             {companyDetail.tax_number || 'Not provided'}
                           </code>
                         </div>
@@ -848,7 +958,9 @@ export default function CompaniesPage() {
                           {companyDetail.industry || 'Not specified'}
                         </div>
                         <div>
-                          <span className="text-foreground">Official Email:</span>{' '}
+                          <span className="text-foreground">
+                            Official Email:
+                          </span>{' '}
                           {companyDetail.email || 'Not specified'}
                         </div>
                       </div>
@@ -862,11 +974,16 @@ export default function CompaniesPage() {
       </Dialog>
 
       {/* Add Contact Modal */}
-      <Dialog open={addContactDialogOpen} onOpenChange={setAddContactDialogOpen}>
+      <Dialog
+        open={addContactDialogOpen}
+        onOpenChange={setAddContactDialogOpen}
+      >
         <DialogContent className="border-border bg-popover text-popover-foreground sm:max-w-md">
           <form onSubmit={handleAddContact}>
             <DialogHeader>
-              <DialogTitle className="text-foreground">Add Contact to Company</DialogTitle>
+              <DialogTitle className="text-foreground">
+                Add Contact to Company
+              </DialogTitle>
               <DialogDescription className="text-muted-foreground text-xs">
                 Add an employee or decision-maker under {selectedCompany?.name}.
               </DialogDescription>
@@ -874,7 +991,9 @@ export default function CompaniesPage() {
 
             <div className="space-y-3 py-3">
               <div className="space-y-1">
-                <Label className="text-xs font-medium">WhatsApp Phone Number *</Label>
+                <Label className="text-xs font-medium">
+                  WhatsApp Phone Number *
+                </Label>
                 <Input
                   value={newContactPhone}
                   onChange={(e) => setNewContactPhone(e.target.value)}
@@ -927,20 +1046,29 @@ export default function CompaniesPage() {
                   id="make-primary"
                   checked={newContactIsPrimary}
                   onChange={(e) => setNewContactIsPrimary(e.target.checked)}
-                  className="rounded border-border text-primary focus:ring-primary"
+                  className="border-border text-primary focus:ring-primary rounded"
                 />
-                <Label htmlFor="make-primary" className="text-xs cursor-pointer">
+                <Label
+                  htmlFor="make-primary"
+                  className="cursor-pointer text-xs"
+                >
                   Designate as Primary Company Contact
                 </Label>
               </div>
             </div>
 
             <DialogFooter>
-              <Button type="button" variant="outline" onClick={() => setAddContactDialogOpen(false)}>
+              <Button
+                type="button"
+                variant="outline"
+                onClick={() => setAddContactDialogOpen(false)}
+              >
                 Cancel
               </Button>
               <Button type="submit" disabled={submitting}>
-                {submitting && <Loader2 className="mr-1.5 h-4 w-4 animate-spin" />}
+                {submitting && (
+                  <Loader2 className="mr-1.5 h-4 w-4 animate-spin" />
+                )}
                 Add Contact
               </Button>
             </DialogFooter>
@@ -952,18 +1080,33 @@ export default function CompaniesPage() {
       <Dialog open={deleteDialogOpen} onOpenChange={setDeleteDialogOpen}>
         <DialogContent className="border-border bg-popover text-popover-foreground sm:max-w-md">
           <DialogHeader>
-            <DialogTitle className="text-foreground">Delete Company?</DialogTitle>
+            <DialogTitle className="text-foreground">
+              Delete Company?
+            </DialogTitle>
             <DialogDescription className="text-muted-foreground text-xs">
-              Are you sure you want to delete <span className="font-semibold text-foreground">&ldquo;{selectedCompany?.name}&rdquo;</span>?
-              Contacts and deals linked to this company will remain preserved with their company association cleared.
+              Are you sure you want to delete{' '}
+              <span className="text-foreground font-semibold">
+                &ldquo;{selectedCompany?.name}&rdquo;
+              </span>
+              ? Contacts and deals linked to this company will remain preserved
+              with their company association cleared.
             </DialogDescription>
           </DialogHeader>
           <DialogFooter>
-            <Button variant="outline" onClick={() => setDeleteDialogOpen(false)}>
+            <Button
+              variant="outline"
+              onClick={() => setDeleteDialogOpen(false)}
+            >
               Cancel
             </Button>
-            <Button variant="destructive" onClick={handleDeleteCompany} disabled={submitting}>
-              {submitting && <Loader2 className="mr-1.5 h-4 w-4 animate-spin" />}
+            <Button
+              variant="destructive"
+              onClick={handleDeleteCompany}
+              disabled={submitting}
+            >
+              {submitting && (
+                <Loader2 className="mr-1.5 h-4 w-4 animate-spin" />
+              )}
               Delete
             </Button>
           </DialogFooter>

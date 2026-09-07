@@ -1,13 +1,13 @@
-import { type ZodSchema, ZodError } from 'zod'
+import { type ZodSchema } from 'zod';
 
 export class ValidationError extends Error {
-  readonly status = 400 as const
-  readonly issues: unknown[]
+  readonly status = 400 as const;
+  readonly issues: unknown[];
 
   constructor(message: string, issues: unknown[] = []) {
-    super(message)
-    this.name = 'ValidationError'
-    this.issues = issues
+    super(message);
+    this.name = 'ValidationError';
+    this.issues = issues;
   }
 }
 
@@ -17,23 +17,23 @@ export class ValidationError extends Error {
  */
 export async function parseBody<T>(
   request: Request,
-  schema: ZodSchema<T>,
+  schema: ZodSchema<T>
 ): Promise<T> {
-  let body: unknown
+  let body: unknown;
   try {
-    body = await request.json()
+    body = await request.json();
   } catch {
-    throw new ValidationError('Invalid JSON in request body')
+    throw new ValidationError('Invalid JSON in request body');
   }
 
-  const result = schema.safeParse(body)
+  const result = schema.safeParse(body);
   if (!result.success) {
-    const issues = result.error.issues ?? []
+    const issues = result.error.issues ?? [];
     const formattedError = issues
       .map((e) => `${e.path.length ? e.path.join('.') + ': ' : ''}${e.message}`)
-      .join('; ')
-    throw new ValidationError(formattedError || 'Validation failed', issues)
+      .join('; ');
+    throw new ValidationError(formattedError || 'Validation failed', issues);
   }
 
-  return result.data
+  return result.data;
 }

@@ -73,13 +73,17 @@ export function CustomAiDialog({
   model,
   onApply,
 }: CustomAiDialogProps) {
-  const [endpointInput, setEndpointInput] = useState(endpoint || 'https://openrouter.ai/api/v1');
+  const [endpointInput, setEndpointInput] = useState(
+    endpoint || 'https://openrouter.ai/api/v1'
+  );
   const [modelInput, setModelInput] = useState(model || 'openai/gpt-4o-mini');
   const [error, setError] = useState<string | null>(null);
 
   // Sync state when opened
   useEffect(() => {
     if (open) {
+      // Intentional: reset dialog inputs to active endpoint/model when opened
+      // eslint-disable-next-line react-hooks/set-state-in-effect
       setEndpointInput(endpoint || 'https://openrouter.ai/api/v1');
       setModelInput(model || 'openai/gpt-4o-mini');
       setError(null);
@@ -129,44 +133,51 @@ export function CustomAiDialog({
       <DialogContent className="sm:max-w-lg">
         <DialogHeader>
           <DialogTitle className="flex items-center gap-2 text-base">
-            <Sparkles className="h-4 w-4 text-primary" /> Configure Custom AI Provider
+            <Sparkles className="text-primary h-4 w-4" /> Configure Custom AI
+            Provider
           </DialogTitle>
           <DialogDescription>
-            Connect OpenRouter or any custom OpenAI-compatible API endpoint to use your choice of models.
+            Connect OpenRouter or any custom OpenAI-compatible API endpoint to
+            use your choice of models.
           </DialogDescription>
         </DialogHeader>
 
         <div className="space-y-4 py-2">
           {/* Presets */}
           <div className="space-y-2">
-            <Label className="text-xs text-muted-foreground font-medium uppercase tracking-wider">
+            <Label className="text-muted-foreground text-xs font-medium tracking-wider uppercase">
               Quick Presets
             </Label>
             <div className="grid grid-cols-2 gap-2">
               {CUSTOM_AI_PRESETS.map((preset) => {
                 const Icon = preset.icon;
                 const isSelected =
-                  endpointInput.replace(/\/+$/, '') === preset.endpoint.replace(/\/+$/, '');
+                  endpointInput.replace(/\/+$/, '') ===
+                  preset.endpoint.replace(/\/+$/, '');
                 return (
                   <button
                     key={preset.id}
                     type="button"
                     onClick={() => handleSelectPreset(preset)}
-                    className={`flex items-start gap-2.5 rounded-lg border p-2.5 text-left transition-all hover:bg-accent/50 ${
+                    className={`hover:bg-accent/50 flex items-start gap-2.5 rounded-lg border p-2.5 text-left transition-all ${
                       isSelected
-                        ? 'border-primary/60 bg-primary/5 ring-1 ring-primary/40'
+                        ? 'border-primary/60 bg-primary/5 ring-primary/40 ring-1'
                         : 'border-border bg-card'
                     }`}
                   >
-                    <Icon className={`mt-0.5 h-4 w-4 shrink-0 ${isSelected ? 'text-primary' : 'text-muted-foreground'}`} />
+                    <Icon
+                      className={`mt-0.5 h-4 w-4 shrink-0 ${isSelected ? 'text-primary' : 'text-muted-foreground'}`}
+                    />
                     <div className="min-w-0 flex-1">
                       <div className="flex items-center justify-between">
-                        <span className="text-xs font-semibold text-foreground">
+                        <span className="text-foreground text-xs font-semibold">
                           {preset.name}
                         </span>
-                        {isSelected && <Check className="h-3 w-3 text-primary" />}
+                        {isSelected && (
+                          <Check className="text-primary h-3 w-3" />
+                        )}
                       </div>
-                      <p className="mt-0.5 line-clamp-1 text-[11px] text-muted-foreground">
+                      <p className="text-muted-foreground mt-0.5 line-clamp-1 text-[11px]">
                         {preset.hint}
                       </p>
                     </div>
@@ -189,8 +200,9 @@ export function CustomAiDialog({
               placeholder="https://openrouter.ai/api/v1"
               className="font-mono text-xs"
             />
-            <p className="text-xs text-muted-foreground">
-              Base URL or direct completion URL (e.g. <code>https://openrouter.ai/api/v1</code>)
+            <p className="text-muted-foreground text-xs">
+              Base URL or direct completion URL (e.g.{' '}
+              <code>https://openrouter.ai/api/v1</code>)
             </p>
           </div>
 
@@ -207,13 +219,13 @@ export function CustomAiDialog({
               placeholder="e.g. openai/gpt-4o-mini, anthropic/claude-3.5-sonnet, deepseek/deepseek-chat"
               className="font-mono text-xs"
             />
-            <p className="text-xs text-muted-foreground">
+            <p className="text-muted-foreground text-xs">
               The exact model slug recognized by your provider
             </p>
           </div>
 
           {error && (
-            <p className="rounded-md bg-destructive/10 px-3 py-2 text-xs text-destructive">
+            <p className="bg-destructive/10 text-destructive rounded-md px-3 py-2 text-xs">
               {error}
             </p>
           )}

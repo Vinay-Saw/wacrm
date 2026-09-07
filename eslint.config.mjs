@@ -15,6 +15,12 @@ const eslintConfig = defineConfig([
     // Vendored minified opus-recorder encoder worker (served statically).
     "public/opus/**",
   ]),
+  {
+    files: ["e2e/**"],
+    rules: {
+      "react-hooks/rules-of-hooks": "off",
+    },
+  },
 ]);
 
 export default eslintConfig;
