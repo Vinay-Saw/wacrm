@@ -202,7 +202,9 @@ export default function ProductsPage() {
       }
 
       toast.success(
-        editingProduct ? 'Product updated successfully' : 'Product created successfully'
+        editingProduct
+          ? 'Product updated successfully'
+          : 'Product created successfully'
       );
       setDialogOpen(false);
       fetchProducts();
@@ -233,21 +235,22 @@ export default function ProductsPage() {
   }
 
   return (
-    <div className="flex-1 space-y-6 p-4 md:p-8 max-w-7xl mx-auto">
+    <div className="mx-auto max-w-7xl flex-1 space-y-6 p-4 md:p-8">
       {/* Header */}
       <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
         <div>
-          <h1 className="text-2xl font-bold tracking-tight text-foreground flex items-center gap-2">
-            <Package className="h-6 w-6 text-primary" />
+          <h1 className="text-foreground flex items-center gap-2 text-2xl font-bold tracking-tight">
+            <Package className="text-primary h-6 w-6" />
             Products & Services
           </h1>
-          <p className="text-sm text-muted-foreground mt-0.5">
-            Manage your catalog items, standard Indian GST tax rates, HSN/SAC codes, and pricing.
+          <p className="text-muted-foreground mt-0.5 text-sm">
+            Manage your catalog items, standard Indian GST tax rates, HSN/SAC
+            codes, and pricing.
           </p>
         </div>
         <Button
           onClick={openCreateDialog}
-          className="bg-primary hover:bg-primary/90 text-primary-foreground font-medium shadow-sm flex items-center gap-1.5"
+          className="bg-primary hover:bg-primary/90 text-primary-foreground flex items-center gap-1.5 font-medium shadow-sm"
         >
           <Plus className="h-4 w-4" />
           Add Product
@@ -255,52 +258,66 @@ export default function ProductsPage() {
       </div>
 
       {/* KPI Cards */}
-      <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
+      <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4">
         <Card className="bg-card border-border shadow-xs">
-          <CardContent className="p-4 flex items-center justify-between">
+          <CardContent className="flex items-center justify-between p-4">
             <div>
-              <p className="text-xs font-medium text-muted-foreground">Total Catalog Items</p>
-              <h3 className="text-2xl font-bold text-foreground mt-1">{totalProducts}</h3>
+              <p className="text-muted-foreground text-xs font-medium">
+                Total Catalog Items
+              </p>
+              <h3 className="text-foreground mt-1 text-2xl font-bold">
+                {totalProducts}
+              </h3>
             </div>
-            <div className="p-2.5 rounded-xl bg-primary/10 text-primary">
+            <div className="bg-primary/10 text-primary rounded-xl p-2.5">
               <Package className="h-5 w-5" />
             </div>
           </CardContent>
         </Card>
 
         <Card className="bg-card border-border shadow-xs">
-          <CardContent className="p-4 flex items-center justify-between">
+          <CardContent className="flex items-center justify-between p-4">
             <div>
-              <p className="text-xs font-medium text-muted-foreground">Active for Sale</p>
-              <h3 className="text-2xl font-bold text-emerald-500 mt-1">{activeProducts}</h3>
+              <p className="text-muted-foreground text-xs font-medium">
+                Active for Sale
+              </p>
+              <h3 className="mt-1 text-2xl font-bold text-emerald-500">
+                {activeProducts}
+              </h3>
             </div>
-            <div className="p-2.5 rounded-xl bg-emerald-500/10 text-emerald-500">
+            <div className="rounded-xl bg-emerald-500/10 p-2.5 text-emerald-500">
               <CheckCircle2 className="h-5 w-5" />
             </div>
           </CardContent>
         </Card>
 
         <Card className="bg-card border-border shadow-xs">
-          <CardContent className="p-4 flex items-center justify-between">
+          <CardContent className="flex items-center justify-between p-4">
             <div>
-              <p className="text-xs font-medium text-muted-foreground">Categories</p>
-              <h3 className="text-2xl font-bold text-foreground mt-1">{categories.length}</h3>
+              <p className="text-muted-foreground text-xs font-medium">
+                Categories
+              </p>
+              <h3 className="text-foreground mt-1 text-2xl font-bold">
+                {categories.length}
+              </h3>
             </div>
-            <div className="p-2.5 rounded-xl bg-violet-500/10 text-violet-500">
+            <div className="rounded-xl bg-violet-500/10 p-2.5 text-violet-500">
               <Layers className="h-5 w-5" />
             </div>
           </CardContent>
         </Card>
 
         <Card className="bg-card border-border shadow-xs">
-          <CardContent className="p-4 flex items-center justify-between">
+          <CardContent className="flex items-center justify-between p-4">
             <div>
-              <p className="text-xs font-medium text-muted-foreground">Average Price</p>
-              <h3 className="text-2xl font-bold text-primary mt-1">
+              <p className="text-muted-foreground text-xs font-medium">
+                Average Price
+              </p>
+              <h3 className="text-primary mt-1 text-2xl font-bold">
                 {formatCurrency(avgPrice, defaultCurrency)}
               </h3>
             </div>
-            <div className="p-2.5 rounded-xl bg-amber-500/10 text-amber-500">
+            <div className="rounded-xl bg-amber-500/10 p-2.5 text-amber-500">
               <Coins className="h-5 w-5" />
             </div>
           </CardContent>
@@ -308,14 +325,14 @@ export default function ProductsPage() {
       </div>
 
       {/* Filter and Search Bar */}
-      <div className="flex flex-col sm:flex-row gap-3 items-stretch sm:items-center justify-between">
-        <div className="relative flex-1 max-w-md">
-          <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+      <div className="flex flex-col items-stretch justify-between gap-3 sm:flex-row sm:items-center">
+        <div className="relative max-w-md flex-1">
+          <Search className="text-muted-foreground absolute top-1/2 left-3 h-4 w-4 -translate-y-1/2" />
           <Input
             value={search}
             onChange={(e) => setSearch(e.target.value)}
             placeholder="Search by product name, SKU, or HSN/SAC..."
-            className="pl-9 bg-card border-border text-foreground"
+            className="bg-card border-border text-foreground pl-9"
           />
         </div>
 
@@ -323,7 +340,7 @@ export default function ProductsPage() {
           <select
             value={selectedCategory}
             onChange={(e) => setSelectedCategory(e.target.value)}
-            className="h-10 rounded-md border border-border bg-card px-3 text-sm text-foreground focus:outline-none focus:ring-1 focus:ring-primary"
+            className="border-border bg-card text-foreground focus:ring-primary h-10 rounded-md border px-3 text-sm focus:ring-1 focus:outline-none"
           >
             <option value="all">All Categories ({totalProducts})</option>
             {categories.map((c) => (
@@ -338,102 +355,128 @@ export default function ProductsPage() {
       {/* Products Table */}
       <Card className="bg-card border-border overflow-hidden shadow-xs">
         <div className="overflow-x-auto">
-          <table className="w-full text-left text-sm text-foreground">
-            <thead className="bg-muted/50 border-b border-border text-xs uppercase tracking-wider text-muted-foreground">
+          <table className="text-foreground w-full text-left text-sm">
+            <thead className="bg-muted/50 border-border text-muted-foreground border-b text-xs tracking-wider uppercase">
               <tr>
-                <th className="py-3 px-4 font-semibold">Item & Description</th>
-                <th className="py-3 px-4 font-semibold">SKU / Code</th>
-                <th className="py-3 px-4 font-semibold">Category</th>
-                <th className="py-3 px-4 font-semibold">Unit Price</th>
-                <th className="py-3 px-4 font-semibold">GST Rate</th>
-                <th className="py-3 px-4 font-semibold">Status</th>
-                <th className="py-3 px-4 text-right font-semibold">Actions</th>
+                <th className="px-4 py-3 font-semibold">Item & Description</th>
+                <th className="px-4 py-3 font-semibold">SKU / Code</th>
+                <th className="px-4 py-3 font-semibold">Category</th>
+                <th className="px-4 py-3 font-semibold">Unit Price</th>
+                <th className="px-4 py-3 font-semibold">GST Rate</th>
+                <th className="px-4 py-3 font-semibold">Status</th>
+                <th className="px-4 py-3 text-right font-semibold">Actions</th>
               </tr>
             </thead>
-            <tbody className="divide-y divide-border">
+            <tbody className="divide-border divide-y">
               {loading ? (
                 <tr>
-                  <td colSpan={7} className="py-12 text-center text-muted-foreground">
-                    <Loader2 className="h-6 w-6 animate-spin mx-auto mb-2 text-primary" />
+                  <td
+                    colSpan={7}
+                    className="text-muted-foreground py-12 text-center"
+                  >
+                    <Loader2 className="text-primary mx-auto mb-2 h-6 w-6 animate-spin" />
                     Loading products...
                   </td>
                 </tr>
               ) : filteredProducts.length === 0 ? (
                 <tr>
-                  <td colSpan={7} className="py-12 text-center text-muted-foreground">
-                    <Package className="h-10 w-10 mx-auto mb-2 text-muted-foreground/50" />
-                    <p className="font-medium text-foreground">No products found</p>
-                    <p className="text-xs text-muted-foreground mt-1">
-                      {search ? 'Try adjusting your search criteria' : 'Add your first product to get started'}
+                  <td
+                    colSpan={7}
+                    className="text-muted-foreground py-12 text-center"
+                  >
+                    <Package className="text-muted-foreground/50 mx-auto mb-2 h-10 w-10" />
+                    <p className="text-foreground font-medium">
+                      No products found
+                    </p>
+                    <p className="text-muted-foreground mt-1 text-xs">
+                      {search
+                        ? 'Try adjusting your search criteria'
+                        : 'Add your first product to get started'}
                     </p>
                   </td>
                 </tr>
               ) : (
                 filteredProducts.map((prod) => (
-                  <tr key={prod.id} className="hover:bg-muted/40 transition-colors">
-                    <td className="py-3.5 px-4">
-                      <div className="font-semibold text-foreground">{prod.name}</div>
+                  <tr
+                    key={prod.id}
+                    className="hover:bg-muted/40 transition-colors"
+                  >
+                    <td className="px-4 py-3.5">
+                      <div className="text-foreground font-semibold">
+                        {prod.name}
+                      </div>
                       {prod.description && (
-                        <div className="text-xs text-muted-foreground truncate max-w-xs mt-0.5">
+                        <div className="text-muted-foreground mt-0.5 max-w-xs truncate text-xs">
                           {prod.description}
                         </div>
                       )}
                     </td>
-                    <td className="py-3.5 px-4 font-mono text-xs text-muted-foreground">
+                    <td className="text-muted-foreground px-4 py-3.5 font-mono text-xs">
                       {prod.sku || '-'}
                       {prod.hsn_sac && (
-                        <span className="block text-[10px] text-muted-foreground/70">
+                        <span className="text-muted-foreground/70 block text-[10px]">
                           HSN: {prod.hsn_sac}
                         </span>
                       )}
                     </td>
-                    <td className="py-3.5 px-4 text-xs">
+                    <td className="px-4 py-3.5 text-xs">
                       {prod.category ? (
-                        <Badge variant="outline" className="text-muted-foreground font-normal border-border">
+                        <Badge
+                          variant="outline"
+                          className="text-muted-foreground border-border font-normal"
+                        >
                           {prod.category}
                         </Badge>
                       ) : (
                         <span className="text-muted-foreground">-</span>
                       )}
                     </td>
-                    <td className="py-3.5 px-4">
-                      <div className="font-semibold text-foreground">
+                    <td className="px-4 py-3.5">
+                      <div className="text-foreground font-semibold">
                         {formatCurrency(prod.unit_price, defaultCurrency)}
                       </div>
-                      <div className="text-[11px] text-muted-foreground">per {prod.unit}</div>
+                      <div className="text-muted-foreground text-[11px]">
+                        per {prod.unit}
+                      </div>
                     </td>
-                    <td className="py-3.5 px-4">
+                    <td className="px-4 py-3.5">
                       <Badge
                         variant="secondary"
-                        className="bg-primary/10 text-primary hover:bg-primary/15 font-semibold text-xs"
+                        className="bg-primary/10 text-primary hover:bg-primary/15 text-xs font-semibold"
                       >
                         {prod.tax_rate}% GST
                       </Badge>
                     </td>
-                    <td className="py-3.5 px-4">
+                    <td className="px-4 py-3.5">
                       {prod.is_active ? (
-                        <span className="inline-flex items-center gap-1 text-xs text-emerald-500 font-medium">
+                        <span className="inline-flex items-center gap-1 text-xs font-medium text-emerald-500">
                           <CheckCircle2 className="h-3.5 w-3.5" />
                           Active
                         </span>
                       ) : (
-                        <span className="inline-flex items-center gap-1 text-xs text-muted-foreground font-medium">
+                        <span className="text-muted-foreground inline-flex items-center gap-1 text-xs font-medium">
                           <XCircle className="h-3.5 w-3.5" />
                           Inactive
                         </span>
                       )}
                     </td>
-                    <td className="py-3.5 px-4 text-right">
+                    <td className="px-4 py-3.5 text-right">
                       <DropdownMenu>
                         <DropdownMenuTrigger
                           render={
-                            <Button variant="ghost" size="sm" className="h-8 w-8 p-0" />
+                            <Button
+                              variant="ghost"
+                              size="sm"
+                              className="h-8 w-8 p-0"
+                            />
                           }
                         >
                           <MoreHorizontal className="h-4 w-4" />
                         </DropdownMenuTrigger>
                         <DropdownMenuContent align="end" className="text-xs">
-                          <DropdownMenuItem onClick={() => openEditDialog(prod)}>
+                          <DropdownMenuItem
+                            onClick={() => openEditDialog(prod)}
+                          >
                             <Edit2 className="mr-2 h-3.5 w-3.5" />
                             Edit Product
                           </DropdownMenuItem>
@@ -462,14 +505,17 @@ export default function ProductsPage() {
 
       {/* Add / Edit Product Dialog */}
       <Dialog open={dialogOpen} onOpenChange={setDialogOpen}>
-        <DialogContent className="max-w-md bg-card border-border text-foreground">
+        <DialogContent className="bg-card border-border text-foreground max-w-md">
           <DialogHeader>
             <DialogTitle className="flex items-center gap-2">
-              <Package className="h-5 w-5 text-primary" />
-              {editingProduct ? 'Edit Product / Service' : 'Add New Product or Service'}
+              <Package className="text-primary h-5 w-5" />
+              {editingProduct
+                ? 'Edit Product / Service'
+                : 'Add New Product or Service'}
             </DialogTitle>
-            <DialogDescription className="text-xs text-muted-foreground">
-              Define the item pricing, Indian GST tax bracket, and billing units.
+            <DialogDescription className="text-muted-foreground text-xs">
+              Define the item pricing, Indian GST tax bracket, and billing
+              units.
             </DialogDescription>
           </DialogHeader>
 
@@ -518,7 +564,8 @@ export default function ProductsPage() {
             <div className="grid grid-cols-2 gap-3">
               <div className="space-y-1.5">
                 <Label htmlFor="p-price" className="text-xs font-semibold">
-                  Unit Price ({defaultCurrency}) <span className="text-red-500">*</span>
+                  Unit Price ({defaultCurrency}){' '}
+                  <span className="text-red-500">*</span>
                 </Label>
                 <Input
                   id="p-price"
@@ -540,7 +587,7 @@ export default function ProductsPage() {
                   id="p-unit"
                   value={formUnit}
                   onChange={(e) => setFormUnit(e.target.value)}
-                  className="w-full h-9 rounded-md border border-border bg-muted px-2.5 text-sm text-foreground focus:outline-none focus:ring-1 focus:ring-primary"
+                  className="border-border bg-muted text-foreground focus:ring-primary h-9 w-full rounded-md border px-2.5 text-sm focus:ring-1 focus:outline-none"
                 >
                   {COMMON_UNITS.map((u) => (
                     <option key={u} value={u}>
@@ -553,15 +600,18 @@ export default function ProductsPage() {
 
             <div className="grid grid-cols-2 gap-3">
               <div className="space-y-1.5">
-                <Label htmlFor="p-gst" className="text-xs font-semibold flex items-center gap-1">
-                  <Percent className="h-3.5 w-3.5 text-primary" />
+                <Label
+                  htmlFor="p-gst"
+                  className="flex items-center gap-1 text-xs font-semibold"
+                >
+                  <Percent className="text-primary h-3.5 w-3.5" />
                   Indian GST Rate
                 </Label>
                 <select
                   id="p-gst"
                   value={formTaxRate}
                   onChange={(e) => setFormTaxRate(e.target.value)}
-                  className="w-full h-9 rounded-md border border-border bg-muted px-2.5 text-sm text-foreground focus:outline-none focus:ring-1 focus:ring-primary"
+                  className="border-border bg-muted text-foreground focus:ring-primary h-9 w-full rounded-md border px-2.5 text-sm focus:ring-1 focus:outline-none"
                 >
                   {GST_BRACKETS.map((b) => (
                     <option key={b.rate} value={b.rate}>
@@ -594,16 +644,16 @@ export default function ProductsPage() {
                 value={formDescription}
                 onChange={(e) => setFormDescription(e.target.value)}
                 placeholder="Optional details printed on estimates and invoices..."
-                className="bg-muted border-border text-sm resize-none"
+                className="bg-muted border-border resize-none text-sm"
               />
             </div>
 
-            <label className="flex items-center gap-2 cursor-pointer pt-1 text-xs text-foreground select-none">
+            <label className="text-foreground flex cursor-pointer items-center gap-2 pt-1 text-xs select-none">
               <input
                 type="checkbox"
                 checked={formIsActive}
                 onChange={(e) => setFormIsActive(e.target.checked)}
-                className="rounded border-border text-primary focus:ring-primary h-4 w-4"
+                className="border-border text-primary focus:ring-primary h-4 w-4 rounded"
               />
               <span>Available for sales orders and tax invoices</span>
             </label>
@@ -617,8 +667,14 @@ export default function ProductsPage() {
               >
                 Cancel
               </Button>
-              <Button type="submit" disabled={submitting} className="bg-primary text-primary-foreground">
-                {submitting && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
+              <Button
+                type="submit"
+                disabled={submitting}
+                className="bg-primary text-primary-foreground"
+              >
+                {submitting && (
+                  <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                )}
                 {editingProduct ? 'Update Product' : 'Create Product'}
               </Button>
             </DialogFooter>
@@ -628,14 +684,16 @@ export default function ProductsPage() {
 
       {/* Delete Confirmation Dialog */}
       <Dialog open={deleteDialogOpen} onOpenChange={setDeleteDialogOpen}>
-        <DialogContent className="max-w-sm bg-card border-border text-foreground">
+        <DialogContent className="bg-card border-border text-foreground max-w-sm">
           <DialogHeader>
-            <DialogTitle className="text-base text-red-500 flex items-center gap-2">
+            <DialogTitle className="flex items-center gap-2 text-base text-red-500">
               <Trash2 className="h-5 w-5" />
               Delete Product
             </DialogTitle>
-            <DialogDescription className="text-xs text-muted-foreground">
-              Are you sure you want to delete <strong>{targetProduct?.name}</strong>? Existing estimates and invoices will keep their historical record.
+            <DialogDescription className="text-muted-foreground text-xs">
+              Are you sure you want to delete{' '}
+              <strong>{targetProduct?.name}</strong>? Existing estimates and
+              invoices will keep their historical record.
             </DialogDescription>
           </DialogHeader>
           <DialogFooter className="gap-2">
@@ -653,7 +711,9 @@ export default function ProductsPage() {
               disabled={submitting}
               onClick={handleDeleteProduct}
             >
-              {submitting && <Loader2 className="mr-2 h-3.5 w-3.5 animate-spin" />}
+              {submitting && (
+                <Loader2 className="mr-2 h-3.5 w-3.5 animate-spin" />
+              )}
               Delete
             </Button>
           </DialogFooter>
